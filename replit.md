@@ -1,45 +1,51 @@
-# [Project name]
+# WAKA Management Platform — Phase 1 POC
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+Portable gym management demonstration for three branches in Kigali.
+The full user-facing specification is in README.md and docs/.
 
-## Run & Operate
+## Runtime
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
-- `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+- Frontend: Next.js in `artifacts/waka`, `pnpm --filter @workspace/waka run dev`.
+- Backend: FastAPI in `backend`; the API artifact's package script launches it.
+- Database: PostgreSQL via SQLAlchemy and `DATABASE_URL`.
+- `python -m backend.migrate` creates initial schema explicitly.
+- `python -m backend.seed` seeds only empty data; `--reset` is destructive.
+- `pnpm --filter @workspace/api-spec run codegen` regenerates API hooks.
+- `pnpm --filter @workspace/waka run typecheck` checks frontend.
+- `python -m compileall -q backend` checks Python compilation.
 
-## Stack
+## Project constraints
 
-- pnpm workspaces, Node.js 24, TypeScript 5.9
-- API: Express 5
-- DB: PostgreSQL + Drizzle ORM
-- Validation: Zod (`zod/v4`), `drizzle-zod`
-- API codegen: Orval (from OpenAPI spec)
-- Build: esbuild (CJS bundle)
+- Production will be exported and run on an ordinary VPS/cloud server.
+  Do not introduce a dependency on Replit auth or proprietary runtime services.
+- Keep the supplied pnpm monorepo paths; Next.js is the frontend and FastAPI
+  is the sole WAKA business backend. Do not add logic to the unused Express
+  or Drizzle scaffold.
+- Only Branch 1 has a simulated speedgate. Branches 2 and 3 are reception-only.
+- Never use real member data. All integrations in Phase 1 are simulated.
+- Clearly label simulated payment, messaging, readers, gates and sample import.
+- Gate/controller/card compatibility and Fitbase export availability remain
+  unconfirmed. Do not imply hardware has been integrated.
+- Core membership/access decisions cannot depend on n8n availability.
+- All REST URLs are same-origin `/api`; preview router and Docker Nginx route
+  to FastAPI. Do not add localhost frontend API rewrites.
+- The browser offline controller is only a simulation, not a physical device
+  or a fully offline-capable web application.
 
-## Where things live
+## Configuration and data
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+See `.env.example` and README. Demo logins use fictional public credentials
+and are rejected by the backend in production/non-demo mode. Production
+requires separate real account provisioning and security hardening.
 
-## Architecture decisions
+WAKA SQLAlchemy models own persistence. Do not run Drizzle schema push.
+Initial migration is explicit metadata creation, not a schema-upgrade engine;
+add Alembic revisions for future schema changes. Do not automatically reset
+data after edits or on startup.
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+## Documentation
 
-## Product
-
-_Describe the high-level user-facing capabilities of this app once they exist._
-
-## User preferences
-
-_Populate as you build — explicit user instructions worth remembering across sessions._
-
-## Gotchas
-
-_Populate as you build — sharp edges, "always run X before Y" rules._
-
-## Pointers
-
-- See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
+- `docs/demo-guide.md`: ten-step live presentation.
+- `docs/api-behavior.md`: exact action request behavior.
+- `docs/architecture.md`: boundaries, future integration and offline caveats.
+- `docker-compose.yml`: standalone POC runtime; not executed inside Replit.

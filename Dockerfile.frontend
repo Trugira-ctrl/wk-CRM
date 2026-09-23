@@ -1,0 +1,18 @@
+FROM node:24-bookworm-slim AS build
+WORKDIR /app
+RUN corepack enable
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json tsconfig.json ./
+COPY lib ./lib
+COPY artifacts/waka ./artifacts/waka
+RUN pnpm install --frozen-lockfile --filter @workspace/waka...
+ENV NEXT_TELEMETRY_DISABLED=1
+RUN pnpm --filter @workspace/waka run build
+
+FROM node:24-bookworm-slim
+WORKDIR /app
+ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000 HOSTNAME=0.0.0.0
+RUN corepack enable && useradd --create-home --uid 10001 waka
+COPY --from=build --chown=waka:waka /app /app
+USER waka
+EXPOSE 3000
+CMD ["pnpm", "--filter", "@workspace/waka", "run", "serve"]

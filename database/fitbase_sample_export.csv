@@ -1,0 +1,11 @@
+source_record_id,full_name,email,phone,plan,start_date,end_date,branch_id
+FB-1001,Diane Ishimwe,diane.ishimwe@example.test,+250788200101,Monthly,2026-09-23,2026-10-23,2
+FB-1002,Claude Niyonzima,claude.niyonzima@example.test,+250788200102,Quarterly,2026-09-22,2026-12-21,1
+FB-1003,Grace Uwamahoro,grace.uwamahoro@example.test,+250788200103,Annual,2026-09-21,2027-09-21,3
+FB-1004,Samuel Rukundo,samuel.rukundo@example.test,+250788200104,Monthly,2026-09-20,2026-10-20,2
+FB-1005,Divine Mutoni,divine.mutoni@example.test,+250788200105,Quarterly,2026-09-19,2026-12-18,1
+FB-1006,Olivier Bizimana,olivier.bizimana@example.test,+250788200106,Annual,2026-09-18,2027-09-18,3
+FB-1007,Sandrine Umutesi,sandrine.umutesi@example.test,+250788200107,Monthly,2026-09-17,2026-10-17,2
+FB-1008,Jean Bosco Murenzi,jean.murenzi@example.test,+250788200108,Quarterly,2026-09-16,2026-12-15,1
+FB-1009,Nadine Nyirahabimana,nadine.nyira@example.test,,Monthly,2026-09-15,2026-10-15,2
+FB-1010,Fabrice Karemera,diane.ishimwe@example.test,+250788200110,Legacy Gold,2026-09-14,2026-10-14,3

@@ -1,36 +1,367 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
-  version: 0.1.0
-  description: API specification
+  version: 1.0.0
+  description: WAKA Phase 1 simulated operations API
 servers:
   - url: /api
-    description: Base API path
-tags:
-  - name: health
-    description: Health operations
 paths:
   /healthz:
     get:
       operationId: healthCheck
-      tags: [health]
-      summary: Health check
-      description: Returns server health status
       responses:
         "200":
-          description: Healthy
+          description: Health
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/HealthStatus"
+              schema: {$ref: "#/components/schemas/HealthStatus"}
+  /session:
+    get:
+      operationId: getSession
+      responses:
+        "200":
+          description: Session (user null when signed out)
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Session"}
+  /login:
+    post:
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/LoginInput"}
+      responses:
+        "200":
+          description: Signed in
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Session"}
+  /logout:
+    post:
+      operationId: logout
+      responses:
+        "200":
+          description: Signed out
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ActionResult"}
+  /public:
+    get:
+      operationId: getPublic
+      responses:
+        "200":
+          description: Public plans and branches
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/PublicData"}
+  /join:
+    post:
+      operationId: join
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/MemberInput"}
+      responses:
+        "200":
+          description: Member created with simulated payment and signed in
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ActionResult"}
+  /workspace:
+    get:
+      operationId: getWorkspace
+      responses:
+        "200":
+          description: Role-filtered operations data with computed metrics
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Workspace"}
+  /actions:
+    post:
+      operationId: runAction
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/ActionInput"}
+      responses:
+        "200":
+          description: Persisted operation result
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ActionResult"}
 components:
   schemas:
     HealthStatus:
       type: object
+      required: [status]
       properties:
-        status:
+        status: {type: string}
+    User:
+      type: object
+      required: [id, name, email, role]
+      properties:
+        id: {type: integer}
+        name: {type: string}
+        email: {type: string}
+        role: {type: string, enum: [ADMIN, MANAGEMENT, RECEPTION, MEMBER]}
+        member_id: {type: [integer, "null"]}
+    Session:
+      type: object
+      required: [user, demo_mode]
+      properties:
+        user:
+          anyOf:
+            - {$ref: "#/components/schemas/User"}
+            - {type: "null"}
+        demo_mode: {type: boolean}
+    LoginInput:
+      type: object
+      required: [email, password]
+      properties:
+        email: {type: string}
+        password: {type: string}
+    Plan:
+      type: object
+      required: [id, name, price, duration_days, description]
+      properties:
+        id: {type: integer}
+        name: {type: string}
+        price: {type: number}
+        duration_days: {type: integer}
+        description: {type: string}
+    Branch:
+      type: object
+      required: [id, name, type, checkins_today, cloud_online, local_online, last_sync]
+      properties:
+        id: {type: integer}
+        name: {type: string}
+        type: {type: string, enum: [GATED, RECEPTION]}
+        checkins_today: {type: integer}
+        cloud_online: {type: boolean}
+        local_online: {type: boolean}
+        last_sync: {type: [string, "null"]}
+    Credential:
+      type: object
+      required: [id, member_id, type, identifier, status]
+      properties:
+        id: {type: integer}
+        member_id: {type: integer}
+        type: {type: string, enum: [CARD, QR]}
+        identifier: {type: string}
+        status: {type: string, enum: [ACTIVE, DISABLED, LOST]}
+    Member:
+      type: object
+      required: [id, full_name, phone, email, branch_id, plan_id, plan_name, start_date, end_date, status, credentials, created_at]
+      properties:
+        id: {type: integer}
+        full_name: {type: string}
+        phone: {type: string}
+        email: {type: string}
+        branch_id: {type: integer}
+        plan_id: {type: integer}
+        plan_name: {type: string}
+        start_date: {type: string}
+        end_date: {type: string}
+        status: {type: string, enum: [ACTIVE, EXPIRED, PAUSED, CANCELLED, PENDING]}
+        gender: {type: [string, "null"]}
+        date_of_birth: {type: [string, "null"]}
+        emergency_contact: {type: [string, "null"]}
+        notes: {type: [string, "null"]}
+        created_at: {type: string}
+        credentials:
+          type: array
+          items: {$ref: "#/components/schemas/Credential"}
+    MemberInput:
+      type: object
+      required: [full_name, email, phone, branch_id, plan_id]
+      properties:
+        full_name: {type: string}
+        email: {type: string}
+        phone: {type: string}
+        branch_id: {type: integer}
+        plan_id: {type: integer}
+        start_date: {type: string}
+        end_date: {type: string}
+        gender: {type: string}
+        date_of_birth: {type: string}
+        emergency_contact: {type: string}
+        notes: {type: string}
+        password: {type: string}
+        record_payment: {type: boolean}
+    AccessEvent:
+      type: object
+      required: [id, member_name, branch_id, method, decision, reason, occurred_at, offline, sync_status]
+      properties:
+        id: {type: string}
+        member_id: {type: [integer, "null"]}
+        member_name: {type: string}
+        branch_id: {type: integer}
+        method: {type: string}
+        decision: {type: string, enum: [ALLOWED, DENIED, MANUAL_OVERRIDE]}
+        reason: {type: string}
+        occurred_at: {type: string}
+        offline: {type: boolean}
+        sync_status: {type: string}
+    Payment:
+      type: object
+      required: [id, member_id, member_name, amount, currency, provider, status, created_at]
+      properties:
+        id: {type: integer}
+        member_id: {type: integer}
+        member_name: {type: string}
+        amount: {type: number}
+        currency: {type: string}
+        provider: {type: string}
+        status: {type: string}
+        created_at: {type: string}
+    Notification:
+      type: object
+      required: [id, member_id, member_name, channel, status, attempt, created_at, final_status]
+      properties:
+        id: {type: integer}
+        member_id: {type: integer}
+        member_name: {type: string}
+        channel: {type: string}
+        status: {type: string}
+        attempt: {type: integer}
+        created_at: {type: string}
+        final_status: {type: string}
+    SystemEvent:
+      type: object
+      required: [id, type, message, created_at]
+      properties:
+        id: {type: integer}
+        type: {type: string}
+        message: {type: string}
+        created_at: {type: string}
+    MigrationRecord:
+      type: object
+      required: [id, source_record_id, status, imported_at]
+      properties:
+        id: {type: integer}
+        source_record_id: {type: string}
+        waka_member_id: {type: [integer, "null"]}
+        status: {type: string}
+        imported_at: {type: string}
+    Metrics:
+      type: object
+      required: [active_members, expiring_week, expired_members, checkins_today, failed_notifications, payments_today, followups]
+      properties:
+        active_members: {type: integer}
+        expiring_week: {type: integer}
+        expired_members: {type: integer}
+        checkins_today: {type: integer}
+        failed_notifications: {type: integer}
+        payments_today: {type: number}
+        followups: {type: integer}
+    VisitTrend:
+      type: object
+      required: [date, branch1, branch2, branch3]
+      properties:
+        date: {type: string}
+        branch1: {type: integer}
+        branch2: {type: integer}
+        branch3: {type: integer}
+    PublicData:
+      type: object
+      required: [plans, branches]
+      properties:
+        plans:
+          type: array
+          items: {$ref: "#/components/schemas/Plan"}
+        branches:
+          type: array
+          items: {$ref: "#/components/schemas/Branch"}
+    Workspace:
+      type: object
+      required: [user, members, plans, branches, access_events, payments, notifications, system_events, migrations, metrics, visit_trend, demo_generation]
+      properties:
+        user: {$ref: "#/components/schemas/User"}
+        members:
+          type: array
+          items: {$ref: "#/components/schemas/Member"}
+        plans:
+          type: array
+          items: {$ref: "#/components/schemas/Plan"}
+        branches:
+          type: array
+          items: {$ref: "#/components/schemas/Branch"}
+        access_events:
+          type: array
+          items: {$ref: "#/components/schemas/AccessEvent"}
+        payments:
+          type: array
+          items: {$ref: "#/components/schemas/Payment"}
+        notifications:
+          type: array
+          items: {$ref: "#/components/schemas/Notification"}
+        system_events:
+          type: array
+          items: {$ref: "#/components/schemas/SystemEvent"}
+        migrations:
+          type: array
+          items: {$ref: "#/components/schemas/MigrationRecord"}
+        metrics: {$ref: "#/components/schemas/Metrics"}
+        visit_trend:
+          type: array
+          items: {$ref: "#/components/schemas/VisitTrend"}
+        demo_generation: {type: string}
+    MigrationRow:
+      type: object
+      required: [source_record_id, full_name, email, phone, plan, start_date, end_date, branch_id, issues]
+      properties:
+        source_record_id: {type: string}
+        full_name: {type: string}
+        email: {type: string}
+        phone: {type: string}
+        plan: {type: string}
+        start_date: {type: string}
+        end_date: {type: string}
+        branch_id: {type: integer}
+        issues: {type: array, items: {type: string}}
+        skip: {type: boolean}
+    ActionInput:
+      type: object
+      required: [action]
+      properties:
+        action:
           type: string
-      required:
-        - status
-
+          enum: [register_member, update_member, assign_card, disable_card, renew_membership, checkin, run_reminders, controller_status, sync_offline, preview_migration, import_migration, reset_demo, update_plan]
+        member: {$ref: "#/components/schemas/MemberInput"}
+        member_id: {type: integer}
+        credential_id: {type: integer}
+        identifier: {type: string}
+        credential_type: {type: string, enum: [CARD, QR]}
+        plan_id: {type: integer}
+        branch_id: {type: integer}
+        method: {type: string}
+        all_fail: {type: boolean}
+        online: {type: boolean}
+        csv: {type: string}
+        confirmation: {type: string}
+        generation: {type: string}
+        rows:
+          type: array
+          items: {$ref: "#/components/schemas/MigrationRow"}
+        events:
+          type: array
+          items: {$ref: "#/components/schemas/AccessEvent"}
+        plan: {$ref: "#/components/schemas/Plan"}
+    ActionResult:
+      type: object
+      required: [ok, message]
+      properties:
+        ok: {type: boolean}
+        message: {type: string}
+        member: {$ref: "#/components/schemas/Member"}
+        event: {$ref: "#/components/schemas/AccessEvent"}
+        rows:
+          type: array
+          items: {$ref: "#/components/schemas/MigrationRow"}
+        imported: {type: integer}
+        skipped: {type: integer}
+        synced: {type: integer}

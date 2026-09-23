@@ -1,0 +1,1 @@
+- [Next.js preview origins](next-preview-origins.md) — development hosts can have nested subdomains; a single-level wildcard may not permit hot reload.

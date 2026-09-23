@@ -47,3 +47,17 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# Python and Next.js
+__pycache__/
+*.py[cod]
+.pythonlibs/
+.next/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# Local configuration (never commit credentials)
+.env
+.env.*
+!.env.example

@@ -1,0 +1,23 @@
+kind = "web"
+previewPath = "/"
+title = "WAKA Management Platform"
+description = "A portable gym operations POC for three Kigali branches, including memberships, simulated card access, renewal, messaging recovery, migration, and offline gate access."
+version = "1.0.0"
+id = "artifacts/waka"
+router = "path"
+
+[[services]]
+name = "web"
+paths = ["/"]
+localPort = 21380
+
+[services.development]
+run = "pnpm --filter @workspace/waka run dev"
+
+[services.production]
+build = ["pnpm", "--filter", "@workspace/waka", "run", "build"]
+run = ["pnpm", "--filter", "@workspace/waka", "run", "serve"]
+
+[services.env]
+PORT = "21380"
+BASE_PATH = "/"
