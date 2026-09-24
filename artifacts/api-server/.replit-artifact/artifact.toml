@@ -22,7 +22,9 @@ args = ["python", "-m", "uvicorn", "backend.main:app", "--host", "0.0.0.0", "--p
 
 [services.production.run.env]
 PORT = "8080"
-ENVIRONMENT = "production"
+ENVIRONMENT = "demo"
+DEMO_MODE = "true"
+COOKIE_SECURE = "true"
 
 [services.production.health.startup]
 path = "/api/healthz"

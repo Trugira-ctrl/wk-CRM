@@ -17,10 +17,12 @@ export default function LoginPage() {
   const queryClient = useQueryClient();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loginError, setLoginError] = useState("");
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    login.mutate({ data: { email, password } }, {
+    setLoginError("");
+    login.mutate({ data: { email: email.trim(), password } }, {
       onSuccess: (session) => {
         queryClient.clear();
         queryClient.setQueryData(getGetSessionQueryKey(), session);
@@ -32,8 +34,15 @@ export default function LoginPage() {
           router.push("/dashboard");
         }
       },
-      onError: () => {
-        toast({ title: "Login Failed", description: "Invalid credentials", variant: "destructive" });
+      onError: (error) => {
+        const detail = (error.data as { detail?: unknown } | null)?.detail;
+        const message = error.status === 401
+          ? "Incorrect email or password. Demo passwords are case-sensitive; choose a role below to fill both fields."
+          : typeof detail === "string"
+            ? detail
+            : "Unable to sign in right now. Check your connection and try again.";
+        setLoginError(message);
+        toast({ title: "Sign-in failed", description: message, variant: "destructive" });
       }
     });
   };
@@ -60,6 +69,7 @@ export default function LoginPage() {
             <Input 
               id="email" 
               type="email" 
+              autoComplete="username"
               placeholder="name@waka.demo"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -71,11 +81,13 @@ export default function LoginPage() {
             <Input 
               id="password" 
               type="password"
+              autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required 
             />
           </div>
+          {loginError && <p role="alert" className="text-sm text-red-700 dark:text-red-400">{loginError}</p>}
           <Button type="submit" className="w-full font-bold uppercase tracking-wider" disabled={login.isPending}>
             {login.isPending ? <Loader2 className="animate-spin w-4 h-4 mr-2" /> : null}
             Sign In
@@ -83,7 +95,11 @@ export default function LoginPage() {
         </form>
 
         <div className="mt-8 pt-8 border-t border-zinc-100 dark:border-zinc-800">
-          <p className="text-xs text-zinc-500 mb-4 text-center font-semibold tracking-wider uppercase">Demo Accounts (WakaDemo2026!)</p>
+          <p className="text-xs text-zinc-500 text-center font-semibold tracking-wider uppercase">Demo accounts</p>
+          <p className="text-xs text-zinc-500 mt-2 mb-4 text-center">
+            Password: <code className="normal-case select-all font-semibold">WakaDemo2026!</code> (case-sensitive).
+            <br />Choose a role to fill the form, then select Sign In.
+          </p>
           <div className="grid grid-cols-2 gap-2">
             {demoAccounts.map(acc => (
               <Button 
@@ -94,6 +110,7 @@ export default function LoginPage() {
                 onClick={() => {
                   setEmail(acc.email);
                   setPassword("WakaDemo2026!");
+                  setLoginError("");
                 }}
               >
                 {acc.label}

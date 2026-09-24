@@ -58,6 +58,12 @@ These accounts are accepted only while demo mode is enabled outside the
 production environment. They are intentionally unsuitable for a public
 production deployment. Registration creates distinct member records.
 
+The hosted POC's API launch configuration uses `ENVIRONMENT=demo`,
+`DEMO_MODE=true` and `COOKIE_SECURE=true` so demo accounts work over HTTPS.
+Keep this demonstration deployment password-protected and use fictional data
+only. A real production rollout must instead use `ENVIRONMENT=production`
+and `DEMO_MODE=false`, with separately provisioned accounts.
+
 See [the ten-step demo guide](docs/demo-guide.md) for a reproducible narrative.
 Initial scenarios: Aline active/no card/expiry in 7 days; Eric expired with a
 card; Patrick active with a card; Alice has a disabled card; Kevin active with

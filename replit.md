@@ -38,6 +38,12 @@ See `.env.example` and README. Demo logins use fictional public credentials
 and are rejected by the backend in production/non-demo mode. Production
 requires separate real account provisioning and security hardening.
 
+The password-protected hosted POC is deliberately a demo deployment:
+`ENVIRONMENT=demo`, `DEMO_MODE=true`, and `COOKIE_SECURE=true`.
+Do not label its API runtime `production` while expecting seeded demo logins
+to work; the production login restriction is intentional. Keep that restriction
+for real deployments, and use only fictional data in the hosted demo.
+
 WAKA SQLAlchemy models own persistence. Do not run Drizzle schema push.
 Initial migration is explicit metadata creation, not a schema-upgrade engine;
 add Alembic revisions for future schema changes. Do not automatically reset
