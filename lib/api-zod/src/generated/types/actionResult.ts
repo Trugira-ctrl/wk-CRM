@@ -18,4 +18,5 @@ export interface ActionResult {
   imported?: number;
   skipped?: number;
   synced?: number;
+  run_id?: string;
 }

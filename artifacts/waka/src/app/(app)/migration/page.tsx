@@ -11,6 +11,16 @@ import type { MigrationRow } from "@workspace/api-client-react";
 import { format } from "date-fns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
+const TEMPLATE_HEADER = "source_record_id,full_name,phone,email,plan,start_date,end_date,branch_id";
+
+function downloadTemplate() {
+  const blob = new Blob([TEMPLATE_HEADER + "\n"], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = "waka_migration_template.csv"; a.click();
+  URL.revokeObjectURL(url);
+}
+
 export default function MigrationPage() {
   const { data: workspace, refetch } = useGetWorkspace();
   const runAction = useRunAction();
@@ -108,7 +118,7 @@ export default function MigrationPage() {
     <div className="space-y-6 max-w-6xl mx-auto">
       <div>
         <h1 className="text-3xl font-display font-bold uppercase tracking-tight">System Migration</h1>
-        <p className="text-zinc-500">Import historical data from Fitbase</p>
+        <p className="text-zinc-500">Sample CSV migration using the WAKA template. Not a confirmed Fitbase API or export integration.</p>
       </div>
 
       <div className="flex items-center gap-4 mb-8">
@@ -133,8 +143,10 @@ export default function MigrationPage() {
           <CardContent className="flex flex-col items-center justify-center py-24 space-y-4">
             <Upload className="w-12 h-12 text-zinc-300" />
             <div className="text-center">
-              <h3 className="font-display font-bold text-xl uppercase tracking-widest">Upload Fitbase Export</h3>
-              <p className="text-sm text-zinc-500 mt-1">Upload the fitbase_sample_export.csv file</p>
+              <h3 className="font-display font-bold text-xl uppercase tracking-widest">Upload Sample CSV</h3>
+              <p className="text-sm text-zinc-500 mt-1 max-w-lg">The file must use exactly this header row, in this order. Other column names (including an arbitrary Fitbase export) are rejected; there is no automatic column mapping.</p>
+              <code className="block mt-3 bg-zinc-900 text-zinc-100 text-xs font-mono px-3 py-2 select-all break-all">{TEMPLATE_HEADER}</code>
+              <p className="text-[11px] text-zinc-500 mt-2">branch_id: 1, 2 or 3. Dates: YYYY-MM-DD. plan: an existing WAKA plan name.</p>
             </div>
             <input 
               type="file" 
@@ -148,7 +160,10 @@ export default function MigrationPage() {
                 Select CSV File
               </Button>
               <Button variant="outline" asChild className="rounded-none uppercase tracking-widest font-bold">
-                <a href="/api/sample-export.csv" download>Download Sample CSV</a>
+                <a href="/api/sample-export.csv" download>Download Sample CSV (10 fictional rows)</a>
+              </Button>
+              <Button variant="outline" onClick={downloadTemplate} className="rounded-none uppercase tracking-widest font-bold">
+                Header Template
               </Button>
             </div>
             <p className="text-[10px] text-zinc-400 mt-4 uppercase tracking-widest">Max file size: 1MB. Fictional data only.</p>
@@ -159,7 +174,7 @@ export default function MigrationPage() {
       {step === 2 && (
         <div className="space-y-6">
           <div className="bg-white border border-zinc-200 p-4">
-            <h4 className="font-bold uppercase tracking-widest text-zinc-900 mb-4 text-xs">CSV Field Mapping Applied</h4>
+            <h4 className="font-bold uppercase tracking-widest text-zinc-900 mb-4 text-xs">Template Columns to WAKA Fields (fixed, no custom mapping)</h4>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs font-mono">
               <div className="flex flex-col"><span className="text-zinc-400 mb-1">source_record_id</span> <span className="text-zinc-900">&rarr; Source ID</span></div>
               <div className="flex flex-col"><span className="text-zinc-400 mb-1">full_name</span> <span className="text-zinc-900">&rarr; Name</span></div>
@@ -294,7 +309,12 @@ export default function MigrationPage() {
       )}
 
       <div className="mt-12">
-        <h2 className="text-xl font-display font-bold uppercase tracking-tight mb-4">Migration History</h2>
+        <h2 className="text-xl font-display font-bold uppercase tracking-tight mb-1">Migration History</h2>
+        <p className="text-xs text-zinc-500 mb-4">Stored on the server. Source-to-WAKA mappings persist after reload.</p>
+        <div className="flex gap-6 mb-4 text-xs uppercase tracking-widest font-bold">
+          <span className="text-green-700">Imported: {workspace.migrations.filter(m => m.status === "IMPORTED").length}</span>
+          <span className="text-zinc-600">Skipped: {workspace.migrations.filter(m => m.status !== "IMPORTED").length}</span>
+        </div>
         <Card className="rounded-none border-zinc-200 shadow-none">
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
@@ -317,7 +337,7 @@ export default function MigrationPage() {
                     <td className="px-4 py-3 font-mono text-xs">{mig.waka_member_id || '-'}</td>
                     <td className="px-4 py-3">
                       <span className={`text-[10px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded ${
-                        mig.status === 'IMPORTED' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                        mig.status === 'IMPORTED' ? 'bg-green-100 text-green-800' : 'bg-zinc-200 text-zinc-700'
                       }`}>
                         {mig.status}
                       </span>

@@ -1,0 +1,47 @@
+Refine the existing **WAKA Management Platform — Phase 1 POC**. Work in the current codebase; do not rebuild the application or reset its database. Keep this a functional demonstration using fictional data and simulated integrations.
+
+Before editing, inspect the relevant frontend, backend, database, and deployment files. Fix the issues below in priority order, then test the deployed build through the UI.
+
+**1. Fix reception check-in decisions — highest priority**
+
+A newly registered member with an active membership was checked in manually at Branch 2. The system recorded **DENIED** with the reason **“Membership valid.”** The same member’s card was allowed at Branch 3. Find the cause and make manual, card, QR, and gate decisions use consistent membership rules.
+
+Verify these cases at both reception branches: active member allowed; expired member denied with the correct reason; disabled card denied; unknown credential denied. A successful check-in must appear as ALLOWED in the central log. Never display a valid-membership reason beside a denial.
+
+**2. Correct notification results and dashboard counts**
+
+The dashboard reported eight “failed notification chains” when the log contained eight failed delivery attempts across two all-fail chains. Count chains separately from attempts and label each metric accurately.
+
+Group notification attempts by scenario run, with one clear final outcome per run: CONTACTED or STAFF FOLLOW-UP REQUIRED. Re-running the demo must not make one member appear to have contradictory outcomes without showing that they belong to separate runs. Keep WhatsApp, SMS, and email explicitly labeled as **SIMULATED**. Do not make membership or access decisions depend on notification automation.
+
+**3. Align the public website and Join flow**
+
+The website plan cards show placeholder prices while Join and admin show actual illustrative RWF amounts. Render website prices and plan details from the same editable plan data used by Join and admin. Preserve an obvious “illustrative/demo price” label until WAKA confirms real pricing.
+
+Make Instagram and WhatsApp footer items functional links only when verified WAKA destinations are available; otherwise label them as placeholders without implying they work. Remove or qualify unverified claims such as “free classes,” “access to all branches,” and “no hidden fees.” Keep fictional coaches and testimonials visibly identified as examples. Review the hero and coach imagery so it cannot be mistaken for verified WAKA people or facilities.
+
+Check that selecting a plan on the website carries that plan into Join. Test the full fictional Join → simulated payment → member account path and confirm it updates the member record and payment log. Do not connect a real payment provider.
+
+**4. Make the sample Fitbase migration clearer**
+
+The current importer requires these exact headers: `source_record_id, full_name, phone, email, plan, start_date, end_date, branch_id`. A CSV with Fitbase-style names from our original brief was rejected. Either provide a real column-mapping step or clearly present the required template before upload. The UI must not imply an arbitrary Fitbase export can be imported without mapping.
+
+Retain the working validation flow: 10 fictional records, eight valid, two requiring review, with resolve/skip controls. Confirm that imported and skipped counts and source-to-WAKA ID mappings persist after reload. Label this as a **sample CSV migration**, not a confirmed Fitbase API integration.
+
+**5. Polish the role views and registration form**
+
+Keep admin-only Migration and Settings inaccessible to reception, management, and members, including by direct URL. Give reception a dashboard centered on member search, registration, cards, renewals, check-ins, and follow-up tasks. Give management a useful overview of branch activity, renewals, payments, denied access, and notification exceptions. Keep the member portal limited to that member’s own information.
+
+The registration form currently has only name, email, phone, branch, and plan. Add the Phase 1 fields that matter for demonstrating the workflow, especially membership start/end dates and optional notes or emergency contact. Keep the form quick for reception to use.
+
+**6. Verify portability and simulation labels**
+
+Replit is the development environment, not the intended production host. Check that the app can be exported to a Git repository and run on an ordinary Linux VPS without Replit-specific authentication or hosting services. Provide or update a README, `.env.example`, database migration instructions, and Docker Compose setup. Use environment variables for configuration; do not hardcode production secrets.
+
+Clearly distinguish the simulated card reader, speedgate, local offline cache, messaging, payments, and Fitbase migration from real integrations. Only Branch 1 has simulated speedgates. Branches 2 and 3 must remain reception check-in branches. Do not claim compatibility with WAKA’s real cards, readers, or gate controllers.
+
+**Acceptance check before you finish**
+
+Demonstrate and report the result of each flow: registration → existing-card assignment → immediate gated access; active and expired manual check-in at Branch 2; card or QR check-in at Branch 3; expired membership → simulated renewal → immediate gate access; WhatsApp failure → retry → SMS fallback; all channels fail → staff follow-up; two offline gate visits → resync → central log; sample CSV validation → eight imported/two skipped → persistent migration history; admin, reception, management, and member role restrictions; public website → Join → simulated payment.
+
+Fix any failures you find. Then give me a concise list of files changed, tests run, remaining limitations, and anything still requiring WAKA’s real pricing, branding assets, hardware details, or approval. Do not reset or erase the current demo data.

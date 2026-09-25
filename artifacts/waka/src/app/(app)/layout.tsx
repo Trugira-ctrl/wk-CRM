@@ -48,6 +48,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   const role = session.user.role;
+  const staffRole = role === "ADMIN" || role === "MANAGEMENT" || role === "RECEPTION";
+  const forbidden =
+    ((role === "MEMBER" || !staffRole) && !pathname.startsWith("/portal")) ||
+    (role !== "ADMIN" && (pathname.startsWith("/migration") || pathname.startsWith("/settings")));
+  if (forbidden) {
+    return <div className="min-h-screen flex items-center justify-center text-sm text-zinc-500 uppercase tracking-widest">Redirecting...</div>;
+  }
   const isStaff = role === "ADMIN" || role === "MANAGEMENT" || role === "RECEPTION";
   const isAdmin = role === "ADMIN";
   const isMember = role === "MEMBER";

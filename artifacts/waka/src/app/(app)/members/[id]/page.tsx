@@ -1,5 +1,7 @@
 "use client";
 
+import { fmtDate } from "@/lib/waka-ops";
+
 import { useGetWorkspace, useRunAction } from "@workspace/api-client-react";
 import { useParams, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
@@ -72,9 +74,9 @@ export default function MemberProfilePage() {
       emergency_contact: member.emergency_contact || "",
       notes: member.notes || "",
       branch_id: member.branch_id,
-      plan_id: member.plan_id,
-      start_date: member.start_date.split('T')[0],
-      end_date: member.end_date.split('T')[0]
+      plan_id: member.plan_id ?? undefined,
+      start_date: member.start_date ? member.start_date.split('T')[0] : "",
+      end_date: member.end_date ? member.end_date.split('T')[0] : ""
     });
     setIsEditOpen(true);
   };
@@ -144,7 +146,7 @@ export default function MemberProfilePage() {
   };
 
   const openRenew = () => {
-    setRenewalPlanId(member.plan_id.toString());
+    setRenewalPlanId(member.plan_id != null ? member.plan_id.toString() : "");
     setIsRenewOpen(true);
   };
 
@@ -332,17 +334,17 @@ export default function MemberProfilePage() {
           <CardContent className="space-y-4">
             <div>
               <div className="text-sm text-zinc-500">Plan</div>
-              <div className="font-medium text-lg">{member.plan_name}</div>
+              <div className="font-medium text-lg">{member.plan_id == null ? "No membership" : member.plan_name}</div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <div className="text-sm text-zinc-500">Start Date</div>
-                <div className="font-medium">{format(new Date(member.start_date), "dd MMM yyyy")}</div>
+                <div className="font-medium">{fmtDate(member.start_date)}</div>
               </div>
               <div>
                 <div className="text-sm text-zinc-500">End Date</div>
                 <div className={`font-medium ${member.status === 'EXPIRED' ? 'text-red-600' : ''}`}>
-                  {format(new Date(member.end_date), "dd MMM yyyy")}
+                  {fmtDate(member.end_date)}
                 </div>
               </div>
             </div>

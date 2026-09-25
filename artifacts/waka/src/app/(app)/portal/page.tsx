@@ -1,5 +1,7 @@
 "use client";
 
+import { fmtDate } from "@/lib/waka-ops";
+
 import { useGetWorkspace, useRunAction } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -47,7 +49,7 @@ export default function MemberPortalPage() {
   };
 
   const openRenew = () => {
-    setRenewalPlanId(member.plan_id.toString());
+    setRenewalPlanId(member.plan_id != null ? member.plan_id.toString() : "");
     setIsRenewOpen(true);
   };
 
@@ -78,10 +80,10 @@ export default function MemberPortalPage() {
           </CardHeader>
           <CardContent className="space-y-6">
             <div>
-              <div className="text-3xl font-display font-bold">{member.plan_name}</div>
+              <div className="text-3xl font-display font-bold">{member.plan_id == null ? "No membership" : member.plan_name}</div>
               <div className="text-sm text-zinc-500 mt-2 space-y-1">
-                <div>Member since: {format(new Date(member.start_date), "dd MMM yyyy")}</div>
-                <div>Valid until: <span className="font-bold text-zinc-900">{format(new Date(member.end_date), "dd MMM yyyy")}</span></div>
+                <div>Member since: {fmtDate(member.start_date)}</div>
+                <div>Valid until: <span className="font-bold text-zinc-900">{fmtDate(member.end_date)}</span></div>
                 {preferredBranch && <div>Preferred Location: {preferredBranch.name}</div>}
               </div>
             </div>

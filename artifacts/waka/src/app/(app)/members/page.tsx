@@ -1,14 +1,17 @@
 "use client";
 
+import { fmtDate } from "@/lib/waka-ops";
+
 import { useGetWorkspace, useRunAction } from "@workspace/api-client-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { kigaliToday, addDays } from "@/lib/waka-ops";
+import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Search, Plus, UserPlus } from "lucide-react";
 import Link from "next/link";
-import { format } from "date-fns";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -23,7 +26,11 @@ const memberSchema = z.object({
   branch_id: z.coerce.number().min(1),
   plan_id: z.coerce.number().min(1),
   gender: z.string().optional(),
-});
+  start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Start date required"),
+  end_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "End date required"),
+  emergency_contact: z.string().optional(),
+  notes: z.string().optional(),
+}).refine(v => v.end_date >= v.start_date, { message: "End date must be on or after start date", path: ["end_date"] });
 
 export default function MembersPage() {
   const { data: workspace, refetch } = useGetWorkspace();
@@ -39,8 +46,24 @@ export default function MembersPage() {
       email: "",
       phone: "",
       gender: "",
+      start_date: kigaliToday(),
+      end_date: "",
+      emergency_contact: "",
+      notes: "",
     }
   });
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("register") === "1") {
+      setIsRegisterOpen(true);
+    }
+  }, []);
+
+  const planDuration = (planId: unknown) => workspace?.plans.find(p => p.id === Number(planId))?.duration_days;
+  const syncEnd = (start: string, planId: unknown) => {
+    const d = planDuration(planId);
+    if (d && start) form.setValue("end_date", addDays(start, d - 1), { shouldValidate: true });
+  };
 
   if (!workspace) return null;
 
@@ -55,15 +78,26 @@ export default function MembersPage() {
       data: {
         action: "register_member",
         member: {
-          ...values,
+          full_name: values.full_name.trim(),
+          email: values.email.trim(),
+          phone: values.phone.trim(),
+          branch_id: values.branch_id,
+          plan_id: values.plan_id,
+          start_date: values.start_date,
+          end_date: values.end_date,
+          ...(values.gender ? { gender: values.gender } : {}),
+          ...(values.emergency_contact?.trim() ? { emergency_contact: values.emergency_contact.trim() } : {}),
+          ...(values.notes?.trim() ? { notes: values.notes.trim() } : {}),
           record_payment: true
         }
       }
     }, {
-      onSuccess: () => {
-        toast({ title: "Member Registered Successfully" });
+      onSuccess: (res: any) => {
+        const m = res?.member;
+        toast({ title: "Member registered", description: m ? `${m.full_name} (ID ${m.id}) - ${m.start_date} to ${m.end_date}. Simulated payment recorded.` : "Simulated payment recorded." });
         setIsRegisterOpen(false);
-        form.reset();
+        form.reset({ full_name: "", email: "", phone: "", gender: "", start_date: kigaliToday(), end_date: "", emergency_contact: "", notes: "" });
+        if (m?.full_name) setSearch(m.full_name);
         refetch();
       },
       onError: (err: any) => {
@@ -84,10 +118,10 @@ export default function MembersPage() {
               Register Member
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px] rounded-none border-zinc-200">
+          <DialogContent className="sm:max-w-[480px] max-h-[90dvh] overflow-y-auto rounded-none border-zinc-200">
             <DialogHeader>
               <DialogTitle className="font-display uppercase text-xl">Register New Member</DialogTitle>
-              <DialogDescription>Create a new membership and simulated payment record.</DialogDescription>
+              <DialogDescription>Creates the member, membership and a simulated payment (no real payment provider).</DialogDescription>
             </DialogHeader>
             
             <Form {...form}>
@@ -137,7 +171,7 @@ export default function MembersPage() {
                   <FormField control={form.control} name="plan_id" render={({ field }) => (
                     <FormItem>
                       <FormLabel>Membership Plan</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value?.toString()}>
+                      <Select onValueChange={(v) => { field.onChange(v); syncEnd(form.getValues("start_date"), v); }} defaultValue={field.value?.toString()}>
                         <FormControl>
                           <SelectTrigger className="rounded-none">
                             <SelectValue placeholder="Select plan" />
@@ -153,6 +187,35 @@ export default function MembersPage() {
                     </FormItem>
                   )} />
                 </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField control={form.control} name="start_date" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Start Date</FormLabel>
+                      <FormControl><Input type="date" {...field} onChange={(e) => { field.onChange(e); syncEnd(e.target.value, form.getValues("plan_id")); }} className="rounded-none" /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="end_date" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>End Date</FormLabel>
+                      <FormControl><Input type="date" {...field} className="rounded-none" /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                </div>
+                <p className="text-[11px] text-zinc-500 -mt-2">Start defaults to today (Kigali). End follows the plan duration; adjust if needed.</p>
+                <FormField control={form.control} name="emergency_contact" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Emergency Contact <span className="text-zinc-400 font-normal">(optional)</span></FormLabel>
+                    <FormControl><Input {...field} placeholder="Name and phone" className="rounded-none" /></FormControl>
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="notes" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Notes <span className="text-zinc-400 font-normal">(optional)</span></FormLabel>
+                    <FormControl><Textarea {...field} rows={2} className="rounded-none" /></FormControl>
+                  </FormItem>
+                )} />
                 <Button type="submit" className="w-full rounded-none font-bold uppercase tracking-widest mt-6" disabled={runAction.isPending}>
                   {runAction.isPending ? "Registering..." : "Complete Registration"}
                 </Button>
@@ -200,8 +263,8 @@ export default function MembersPage() {
                     <div className="text-xs text-zinc-500">{member.email}</div>
                   </td>
                   <td className="px-4 py-3">
-                    <div className="text-zinc-900">{member.plan_name}</div>
-                    <div className="text-xs text-zinc-500">Exp: {format(new Date(member.end_date), "dd MMM yyyy")}</div>
+                    <div className="text-zinc-900">{member.plan_id == null ? "No membership" : member.plan_name}</div>
+                    <div className="text-xs text-zinc-500">{member.end_date ? `Exp: ${fmtDate(member.end_date)}` : "No end date"}</div>
                   </td>
                   <td className="px-4 py-3">
                     <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium uppercase tracking-wider ${

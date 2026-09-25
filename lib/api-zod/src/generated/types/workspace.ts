@@ -11,6 +11,7 @@ import type { Member } from './member';
 import type { Metrics } from './metrics';
 import type { MigrationRecord } from './migrationRecord';
 import type { Notification } from './notification';
+import type { NotificationRun } from './notificationRun';
 import type { Payment } from './payment';
 import type { Plan } from './plan';
 import type { SystemEvent } from './systemEvent';
@@ -25,6 +26,7 @@ export interface Workspace {
   access_events: AccessEvent[];
   payments: Payment[];
   notifications: Notification[];
+  notification_runs: NotificationRun[];
   system_events: SystemEvent[];
   migrations: MigrationRecord[];
   metrics: Metrics;

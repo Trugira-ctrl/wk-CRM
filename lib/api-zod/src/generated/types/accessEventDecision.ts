@@ -12,5 +12,4 @@ export type AccessEventDecision = typeof AccessEventDecision[keyof typeof Access
 export const AccessEventDecision = {
   ALLOWED: 'ALLOWED',
   DENIED: 'DENIED',
-  MANUAL_OVERRIDE: 'MANUAL_OVERRIDE',
 } as const;

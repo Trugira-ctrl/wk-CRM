@@ -30,11 +30,18 @@ defines serialized fields. Business dates use Africa/Kigali.
   Branch 1 only SPEEDGATE_CARD; others RECEPTION_CARD, RECEPTION_QR,
   MANUAL_RECEPTION. Validate credential status, membership start/end/status;
   unknown credentials/expired/disabled cards create DENIED events, not errors.
-  Return event. Credentials are separate records from members.
+  Successful manual, card, QR and gate checks all return ALLOWED. Existing
+  MANUAL_OVERRIDE history is serialized as ALLOWED without rewriting stored
+  audit records. Denial reasons come from the credential or membership check,
+  never "Membership valid". Credentials are separate records from members.
 - run_reminders: staff; optional member_id (default Aline), all_fail boolean.
   Persist chronological SIMULATED WHATSAPP failed, retry failed,
   SIMULATED SMS delivered (or failed), SIMULATED EMAIL failed for all-fail.
-  Final CONTACTED or STAFF FOLLOW-UP REQUIRED.
+  Final CONTACTED or STAFF FOLLOW-UP REQUIRED, exactly once per scenario run.
+  Workspace notification_runs groups attempts by persisted UUID run association;
+  notifications retains the attempt ledger. Failed chains count all-fail runs;
+  failed attempts count individual FAILED deliveries, including retries in
+  successful fallback runs. Legacy reconstructed groups are explicitly marked.
 - controller_status: staff; online boolean; only Branch 1. Audit outage/restoration.
 - sync_offline: staff; generation and events array. Idempotent UUID event upserts,
   branch 1/SPEEDGATE_CARD only, original occurrence preserved, offline=true,

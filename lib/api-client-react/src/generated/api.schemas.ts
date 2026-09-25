@@ -99,6 +99,7 @@ export const MemberStatus = {
   PAUSED: 'PAUSED',
   CANCELLED: 'CANCELLED',
   PENDING: 'PENDING',
+  MISSING: 'MISSING',
 } as const;
 
 export interface Member {
@@ -107,10 +108,13 @@ export interface Member {
   phone: string;
   email: string;
   branch_id: number;
-  plan_id: number;
+  /** @nullable */
+  plan_id: number | null;
   plan_name: string;
-  start_date: string;
-  end_date: string;
+  /** @nullable */
+  start_date: string | null;
+  /** @nullable */
+  end_date: string | null;
   status: MemberStatus;
   /** @nullable */
   gender?: string | null;
@@ -146,7 +150,6 @@ export type AccessEventDecision = typeof AccessEventDecision[keyof typeof Access
 export const AccessEventDecision = {
   ALLOWED: 'ALLOWED',
   DENIED: 'DENIED',
-  MANUAL_OVERRIDE: 'MANUAL_OVERRIDE',
 } as const;
 
 export interface AccessEvent {
@@ -183,6 +186,18 @@ export interface Notification {
   attempt: number;
   created_at: string;
   final_status: string;
+  run_id: string;
+}
+
+export interface NotificationRun {
+  id: string;
+  member_id: number;
+  member_name: string;
+  started_at: string;
+  final_status: string;
+  legacy: boolean;
+  uncertain: boolean;
+  attempts: Notification[];
 }
 
 export interface SystemEvent {
@@ -209,6 +224,10 @@ export interface Metrics {
   failed_notifications: number;
   payments_today: number;
   followups: number;
+  failed_notification_chains: number;
+  failed_notification_attempts: number;
+  followup_count: number;
+  notification_failures: number;
 }
 
 export interface VisitTrend {
@@ -231,6 +250,7 @@ export interface Workspace {
   access_events: AccessEvent[];
   payments: Payment[];
   notifications: Notification[];
+  notification_runs: NotificationRun[];
   system_events: SystemEvent[];
   migrations: MigrationRecord[];
   metrics: Metrics;
@@ -307,5 +327,6 @@ export interface ActionResult {
   imported?: number;
   skipped?: number;
   synced?: number;
+  run_id?: string;
 }
 

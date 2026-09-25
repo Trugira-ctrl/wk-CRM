@@ -1,6 +1,6 @@
 FROM node:24-bookworm-slim AS build
 WORKDIR /app
-RUN corepack enable
+RUN corepack enable && corepack prepare pnpm@10.26.1 --activate
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json tsconfig.json ./
 COPY lib ./lib
 COPY artifacts/waka ./artifacts/waka
@@ -11,7 +11,8 @@ RUN pnpm --filter @workspace/waka run build
 FROM node:24-bookworm-slim
 WORKDIR /app
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000 HOSTNAME=0.0.0.0
-RUN corepack enable && useradd --create-home --uid 10001 waka
+RUN corepack enable && corepack prepare pnpm@10.26.1 --activate \
+    && useradd --create-home --uid 10001 waka
 COPY --from=build --chown=waka:waka /app /app
 USER waka
 EXPOSE 3000

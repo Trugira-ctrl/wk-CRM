@@ -1,1 +1,2 @@
 - [Next.js preview origins](next-preview-origins.md) — development hosts can have nested subdomains; a single-level wildcard may not permit hot reload.
+- [Notification run identity](notification-run-identity.md) — preserve explicit scenario boundaries; retries are attempts, and ambiguous historical fragments must stay uncertain.

@@ -15,4 +15,5 @@ export interface Notification {
   attempt: number;
   created_at: string;
   final_status: string;
+  run_id: string;
 }

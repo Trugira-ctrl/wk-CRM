@@ -1,8 +1,8 @@
 "use client";
 
-import { useGetWorkspace, useJoin, getGetSessionQueryKey } from "@workspace/api-client-react";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useGetPublic, getGetPublicQueryKey, useJoin, getGetSessionQueryKey } from "@workspace/api-client-react";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useForm } from "react-hook-form";
@@ -11,7 +11,7 @@ import * as z from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { CheckCircle2, ShieldCheck, Loader2 } from "lucide-react";
+import { CheckCircle2, ShieldCheck, Loader2, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -20,12 +20,35 @@ const joinSchema = z.object({
   email: z.string().email("Invalid email"),
   phone: z.string().min(8, "Phone required"),
   password: z.string().min(8, "Password must be at least 8 characters"),
-  branch_id: z.coerce.number().min(1),
-  plan_id: z.coerce.number().min(1),
+  branch_id: z.coerce.number({ invalid_type_error: "Select a branch" }).min(1, "Select a branch"),
+  plan_id: z.coerce.number({ invalid_type_error: "Select a plan" }).min(1, "Select a plan"),
 });
 
 export default function JoinPage() {
-  const { data: workspace } = useGetWorkspace();
+  return (
+    <Suspense fallback={<JoinSkeleton />}>
+      <JoinInner />
+    </Suspense>
+  );
+}
+
+function JoinSkeleton() {
+  return (
+    <div className="min-h-screen bg-zinc-50 pt-12">
+      <div className="container mx-auto px-4 max-w-xl space-y-4">
+        <div className="h-10 w-1/2 mx-auto bg-zinc-200 animate-pulse" />
+        <div className="h-96 bg-white border border-zinc-200 animate-pulse" />
+      </div>
+    </div>
+  );
+}
+
+function JoinInner() {
+  const searchParams = useSearchParams();
+  const planParam = searchParams.get("plan");
+  const { data: workspace, isLoading, isError, refetch } = useGetPublic({
+    query: { queryKey: getGetPublicQueryKey(), refetchInterval: 15000, refetchOnWindowFocus: true, refetchOnMount: "always", staleTime: 0 },
+  });
   const join = useJoin();
   const { toast } = useToast();
   const router = useRouter();
@@ -43,7 +66,32 @@ export default function JoinPage() {
     }
   });
 
-  if (!workspace) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  const appliedParam = useRef<string | null>(null);
+  const [invalidPlanParam, setInvalidPlanParam] = useState<string | null>(null);
+  useEffect(() => {
+    if (!workspace || !planParam || appliedParam.current === planParam) return;
+    appliedParam.current = planParam;
+    const match = workspace.plans.find((p) => String(p.id) === planParam);
+    if (match) {
+      form.setValue("plan_id", match.id, { shouldValidate: true });
+      setInvalidPlanParam(null);
+    } else {
+      setInvalidPlanParam(planParam);
+    }
+  }, [workspace, planParam, form]);
+
+  if (isLoading) return <JoinSkeleton />;
+  if (isError || !workspace) {
+    return (
+      <div className="min-h-screen bg-zinc-50 flex items-center justify-center px-4">
+        <div className="bg-white border border-zinc-200 p-8 text-center max-w-md">
+          <AlertTriangle className="w-8 h-8 mx-auto mb-4 text-zinc-400" />
+          <p className="mb-6 text-zinc-600">Membership plans could not be loaded.</p>
+          <Button onClick={() => refetch()} className="rounded-none font-bold uppercase tracking-widest">Retry</Button>
+        </div>
+      </div>
+    );
+  }
 
   const onSubmit = (values: z.infer<typeof joinSchema>) => {
     if (step === 1) {
@@ -66,7 +114,7 @@ export default function JoinPage() {
         router.push("/portal");
       },
       onError: (err: any) => {
-        toast({ title: "Registration failed", description: err.message, variant: "destructive" });
+        toast({ title: "Registration failed", description: err?.data?.detail ?? err?.message ?? "Please check your details and try again. No payment was taken.", variant: "destructive" });
       }
     });
   };
@@ -80,6 +128,7 @@ export default function JoinPage() {
         <div className="text-center mb-12">
           <h1 className="text-4xl font-display font-bold uppercase tracking-tighter mb-2">Join WAKA</h1>
           <p className="text-zinc-500">Create your account and select a membership plan.</p>
+          <p className="mt-3 inline-block text-[10px] font-bold uppercase tracking-widest text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1">Demo: illustrative prices, simulated payment, no real charge</p>
         </div>
 
         <div className="bg-white border border-zinc-200 p-8 shadow-sm">
@@ -131,7 +180,7 @@ export default function JoinPage() {
                     <FormField control={form.control} name="branch_id" render={({ field }) => (
                       <FormItem>
                         <FormLabel>Preferred Location</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value?.toString()}>
+                        <Select onValueChange={field.onChange} value={field.value ? field.value.toString() : undefined}>
                           <FormControl>
                             <SelectTrigger className="rounded-none bg-zinc-50">
                               <SelectValue placeholder="Select a branch..." />
@@ -150,17 +199,28 @@ export default function JoinPage() {
                     <FormField control={form.control} name="plan_id" render={({ field }) => (
                       <FormItem>
                         <FormLabel>Membership Plan</FormLabel>
+                        {invalidPlanParam && (
+                          <div role="alert" className="flex items-start gap-2 border border-red-200 bg-red-50 text-red-700 text-xs p-3">
+                            <AlertTriangle className="w-4 h-4 shrink-0" />
+                            <span>The plan in your link (id {invalidPlanParam}) is not available. Please choose a plan below.</span>
+                          </div>
+                        )}
                         <div className="grid gap-3">
                           {workspace.plans.map(p => (
                             <div 
                               key={p.id} 
                               className={`border p-4 cursor-pointer transition-colors ${field.value?.toString() === p.id.toString() ? 'border-zinc-900 bg-zinc-50 ring-1 ring-zinc-900' : 'border-zinc-200 hover:border-zinc-400'}`}
-                              onClick={() => form.setValue("plan_id", p.id)}
+                              role="radio"
+                              aria-checked={field.value?.toString() === p.id.toString()}
+                              tabIndex={0}
+                              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); form.setValue("plan_id", p.id, { shouldValidate: true }); setInvalidPlanParam(null); } }}
+                              onClick={() => { form.setValue("plan_id", p.id, { shouldValidate: true }); setInvalidPlanParam(null); }}
                             >
                               <div className="flex justify-between items-center">
                                 <div className="font-bold uppercase tracking-widest text-sm">{p.name}</div>
-                                <div className="font-mono">{p.price.toLocaleString()} RWF</div>
+                                <div className="font-mono">{p.price.toLocaleString("en-US")} RWF</div>
                               </div>
+                              <div className="flex justify-between text-[10px] uppercase tracking-widest text-zinc-400 mt-1"><span>{p.duration_days} days</span><span>Illustrative demo price</span></div>
                               <div className="text-xs text-zinc-500 mt-1">{p.description}</div>
                             </div>
                           ))}
@@ -176,6 +236,13 @@ export default function JoinPage() {
                 </div>
               )}
 
+              {step === 2 && !selectedPlan && (
+                <div className="text-center space-y-4">
+                  <p className="text-sm text-zinc-600">The selected plan is no longer available. Please choose again.</p>
+                  <Button type="button" onClick={() => setStep(1)} className="rounded-none font-bold uppercase tracking-widest">Back to plans</Button>
+                </div>
+              )}
+
               {step === 2 && selectedPlan && (
                 <div className="space-y-6 animate-in slide-in-from-right-4">
                   <div className="flex items-center justify-between border-b border-zinc-100 pb-4">
@@ -187,14 +254,15 @@ export default function JoinPage() {
                     <div className="text-sm font-bold uppercase tracking-widest text-zinc-500 mb-4">Order Summary</div>
                     <div className="flex justify-between items-center mb-2">
                       <span>{selectedPlan.name} Membership</span>
-                      <span className="font-mono">{selectedPlan.price.toLocaleString()} RWF</span>
+                      <span className="font-mono">{selectedPlan.price.toLocaleString("en-US")} RWF</span>
                     </div>
                     <div className="flex justify-between items-center text-xs text-zinc-500 mb-6">
                       <span>Duration: {selectedPlan.duration_days} days</span>
+                      <span className="uppercase tracking-widest text-amber-700">Illustrative demo price</span>
                     </div>
                     <div className="flex justify-between items-center border-t border-zinc-200 pt-4 font-bold text-lg">
                       <span>Total Due</span>
-                      <span className="font-mono">{selectedPlan.price.toLocaleString()} RWF</span>
+                      <span className="font-mono">{selectedPlan.price.toLocaleString("en-US")} RWF</span>
                     </div>
                   </div>
 
@@ -204,7 +272,7 @@ export default function JoinPage() {
                     </div>
                     <div className="font-bold uppercase tracking-widest">Simulated Payment Gateway</div>
                     <p className="text-sm text-zinc-500">
-                      In a production environment, this would integrate with a real payment provider. Clicking complete will simulate a successful transaction.
+                      In a production environment, this would integrate with a real payment provider. Clicking complete will simulate a successful transaction. No card details are collected and no money is charged.
                     </p>
                   </div>
 

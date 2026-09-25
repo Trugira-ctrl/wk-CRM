@@ -1,4 +1,5 @@
-from datetime import timedelta
+from datetime import timedelta, timezone
+import json
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
@@ -35,6 +36,8 @@ def current_membership(member: Member):
 
 
 def effective_status(ms: Membership):
+    if ms is None:
+        return "MISSING"
     if ms.status == "ACTIVE" and ms.end_date < today():
         return "EXPIRED"
     if ms.status == "ACTIVE" and ms.start_date > today():
@@ -45,8 +48,8 @@ def effective_status(ms: Membership):
 def member_json(m: Member):
     ms = current_membership(m)
     return {"id": m.id, "full_name": m.full_name, "phone": m.phone, "email": m.email,
-            "branch_id": m.branch_id, "plan_id": ms.plan_id, "plan_name": ms.plan.name,
-            "start_date": iso(ms.start_date), "end_date": iso(ms.end_date), "status": effective_status(ms),
+            "branch_id": m.branch_id, "plan_id": ms.plan_id if ms else None, "plan_name": ms.plan.name if ms else "No membership",
+            "start_date": iso(ms.start_date) if ms else None, "end_date": iso(ms.end_date) if ms else None, "status": effective_status(ms),
             "gender": m.gender, "date_of_birth": iso(m.date_of_birth),
             "emergency_contact": m.emergency_contact, "notes": m.notes,
             "credentials": [credential_json(c) for c in m.credentials], "created_at": iso(m.created_at)}
@@ -54,7 +57,7 @@ def member_json(m: Member):
 
 def event_json(e: AccessEvent):
     return {"id": e.id, "member_id": e.member_id, "member_name": e.member_name,
-            "branch_id": e.branch_id, "method": e.method, "decision": e.decision,
+            "branch_id": e.branch_id, "method": e.method, "decision": "ALLOWED" if e.decision == "MANUAL_OVERRIDE" else e.decision,
             "reason": e.reason, "occurred_at": iso(e.occurred_at), "offline": e.offline,
             "sync_status": e.sync_status}
 
@@ -65,10 +68,58 @@ def payment_json(p: Payment):
             "status": p.status, "created_at": iso(p.created_at)}
 
 
-def notification_json(n: NotificationEvent):
+def notification_json(n: NotificationEvent, run_id: str):
     return {"id": n.id, "member_id": n.member_id, "member_name": n.member.full_name,
             "channel": n.channel, "status": n.status, "attempt": n.attempt,
-            "created_at": iso(n.created_at), "final_status": n.final_status}
+            "created_at": iso(n.created_at), "final_status": n.final_status, "run_id": run_id}
+
+
+def notification_runs(db, notifications):
+    """Project immutable historical attempts; never backfill guesses into storage."""
+    by_id = {n.id: n for n in notifications}
+    assigned, runs = set(), []
+
+    def timestamp(n):
+        return n.created_at.replace(tzinfo=timezone.utc) if n.created_at.tzinfo is None else n.created_at
+
+    def add(run_id, attempts, legacy, uncertain=False):
+        assigned.update(n.id for n in attempts)
+        runs.append({"id": run_id, "member_id": attempts[0].member_id,
+                     "member_name": attempts[0].member.full_name,
+                     "started_at": iso(min(timestamp(n) for n in attempts)),
+                     "final_status": "UNKNOWN LEGACY OUTCOME" if uncertain else attempts[-1].final_status,
+                     "legacy": legacy, "uncertain": uncertain,
+                     "attempts": [notification_json(n, run_id) for n in attempts]})
+
+    for entry in db.scalars(select(Config).where(Config.key.startswith("notification_run:"))):
+        ids = json.loads(entry.value)["event_ids"]
+        attempts = sorted((by_id[i] for i in ids if i in by_id), key=lambda n: n.attempt)
+        if attempts:
+            add(entry.key.split(":", 1)[1], attempts, False)
+    # Legacy sequences are inferred only when a complete, uninterrupted known
+    # simulator pattern exists for the member. Everything else remains uncertain.
+    members = {}
+    for n in sorted(notifications, key=lambda n: n.id):
+        if n.id not in assigned:
+            members.setdefault(n.member_id, []).append(n)
+    for attempts in members.values():
+        i = 0
+        while i < len(attempts):
+            first = attempts[i]
+            size = 4 if first.final_status == "STAFF FOLLOW-UP REQUIRED" else 3
+            candidate = attempts[i:i + size]
+            pattern = [("WHATSAPP", "FAILED"), ("WHATSAPP", "FAILED"),
+                       ("SMS", "FAILED"), ("EMAIL", "FAILED")] if size == 4 else [
+                       ("WHATSAPP", "FAILED"), ("WHATSAPP", "FAILED"), ("SMS", "DELIVERED")]
+            complete = (len(candidate) == size and
+                        first.final_status in {"CONTACTED", "STAFF FOLLOW-UP REQUIRED"} and
+                        all(n.attempt == j + 1 and (n.channel, n.status) == pattern[j] and
+                            n.final_status == first.final_status for j, n in enumerate(candidate)) and
+                        all(0 <= (timestamp(b) - timestamp(a)).total_seconds() <= 120
+                            for a, b in zip(candidate, candidate[1:])))
+            add(f"legacy-{first.id}", candidate if complete else [first], True, not complete)
+            i += size if complete else 1
+    return sorted(runs, key=lambda r: r["started_at"], reverse=True)
 
 
 def workspace(db: Session, user: User):
@@ -79,7 +130,7 @@ def workspace(db: Session, user: User):
     ids = [m.id for m in members]
     events_q = select(AccessEvent).order_by(AccessEvent.occurred_at.desc()).limit(200)
     payments_q = select(Payment).options(selectinload(Payment.member)).order_by(Payment.created_at.desc()).limit(200)
-    notifications_q = select(NotificationEvent).options(selectinload(NotificationEvent.member)).order_by(NotificationEvent.created_at.desc()).limit(200)
+    notifications_q = select(NotificationEvent).options(selectinload(NotificationEvent.member)).order_by(NotificationEvent.created_at.desc())
     if user.role == "MEMBER":
         events_q = events_q.where(AccessEvent.member_id == user.member_id)
         payments_q = payments_q.where(Payment.member_id == user.member_id)
@@ -87,6 +138,9 @@ def workspace(db: Session, user: User):
     events = db.scalars(events_q).all()
     payments = db.scalars(payments_q).all()
     notifications = db.scalars(notifications_q).all()
+    runs = notification_runs(db, notifications)
+    failed_chains = sum(r["final_status"] == "STAFF FOLLOW-UP REQUIRED" for r in runs)
+    failed_attempts = sum(n.status == "FAILED" for n in notifications)
     all_members = (members if user.role == "MEMBER" else
                    db.scalars(select(Member).options(
                        selectinload(Member.memberships).selectinload(Membership.plan))).all())
@@ -97,9 +151,11 @@ def workspace(db: Session, user: User):
         "active_members": len(active), "expiring_week": sum(day <= m.end_date <= day + timedelta(days=7) for m in active),
         "expired_members": statuses.count("EXPIRED"),
         "checkins_today": sum(e.occurred_at.astimezone(KIGALI).date() == day and e.decision in ("ALLOWED", "MANUAL_OVERRIDE") for e in events),
-        "failed_notifications": sum(n.status == "FAILED" for n in notifications),
+        "failed_notifications": failed_attempts, "notification_failures": failed_attempts,
+        "failed_notification_attempts": failed_attempts, "failed_notification_chains": failed_chains,
+        "followup_count": failed_chains,
         "payments_today": sum(int(p.amount) for p in payments if p.created_at.astimezone(KIGALI).date() == day),
-        "followups": sum(n.final_status == "STAFF FOLLOW-UP REQUIRED" for n in notifications),
+        "followups": failed_chains,
     }
     trend = []
     all_events = events if user.role == "MEMBER" else db.scalars(select(AccessEvent)).all()
@@ -112,14 +168,14 @@ def workspace(db: Session, user: User):
         trend.append(row)
     system = [] if user.role == "MEMBER" else [{"id": x.id, "type": x.type, "message": x.message, "created_at": iso(x.created_at)}
                                                 for x in db.scalars(select(SystemEvent).order_by(SystemEvent.created_at.desc()).limit(100)).all()]
-    migrations = [] if user.role == "MEMBER" else [{"id": x.id, "source_record_id": x.source_record_id, "waka_member_id": x.waka_member_id,
+    migrations = [] if user.role != "ADMIN" else [{"id": x.id, "source_record_id": x.source_record_id, "waka_member_id": x.waka_member_id,
                                                      "status": x.status, "imported_at": iso(x.imported_at)}
-                                                    for x in db.scalars(select(MigrationRecord).order_by(MigrationRecord.id.desc()).limit(100)).all()]
+                                                    for x in db.scalars(select(MigrationRecord).order_by(MigrationRecord.id.desc())).all()]
     generation = db.get(Config, "demo_generation")
     return {"user": user_json(user), "members": [member_json(m) for m in members],
             "plans": [plan_json(p) for p in db.scalars(select(Plan).order_by(Plan.id)).all()],
             "branches": [branch_json(db, b) for b in db.scalars(select(Branch).order_by(Branch.id)).all()],
             "access_events": [event_json(e) for e in events], "payments": [payment_json(p) for p in payments],
-            "notifications": [notification_json(n) for n in notifications], "system_events": system,
+            "notifications": [n for r in runs for n in r["attempts"]], "notification_runs": runs, "system_events": system,
             "migrations": migrations, "metrics": metrics, "visit_trend": trend,
             "demo_generation": generation.value if generation else ""}

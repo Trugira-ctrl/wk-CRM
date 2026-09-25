@@ -14,4 +14,8 @@ export interface Metrics {
   failed_notifications: number;
   payments_today: number;
   followups: number;
+  failed_notification_chains: number;
+  failed_notification_attempts: number;
+  followup_count: number;
+  notification_failures: number;
 }

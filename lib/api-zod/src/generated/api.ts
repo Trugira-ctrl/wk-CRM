@@ -51,11 +51,11 @@ export const LogoutResponse = zod.object({
   "phone": zod.string(),
   "email": zod.string(),
   "branch_id": zod.number().int(),
-  "plan_id": zod.number().int(),
+  "plan_id": zod.number().int().nullable(),
   "plan_name": zod.string(),
-  "start_date": zod.string(),
-  "end_date": zod.string(),
-  "status": zod.enum(['ACTIVE', 'EXPIRED', 'PAUSED', 'CANCELLED', 'PENDING']),
+  "start_date": zod.string().nullable(),
+  "end_date": zod.string().nullable(),
+  "status": zod.enum(['ACTIVE', 'EXPIRED', 'PAUSED', 'CANCELLED', 'PENDING', 'MISSING']),
   "gender": zod.string().nullish(),
   "date_of_birth": zod.string().nullish(),
   "emergency_contact": zod.string().nullish(),
@@ -75,7 +75,7 @@ export const LogoutResponse = zod.object({
   "member_name": zod.string(),
   "branch_id": zod.number().int(),
   "method": zod.string(),
-  "decision": zod.enum(['ALLOWED', 'DENIED', 'MANUAL_OVERRIDE']),
+  "decision": zod.enum(['ALLOWED', 'DENIED']),
   "reason": zod.string(),
   "occurred_at": zod.string(),
   "offline": zod.boolean(),
@@ -95,7 +95,8 @@ export const LogoutResponse = zod.object({
 })).optional(),
   "imported": zod.number().int().optional(),
   "skipped": zod.number().int().optional(),
-  "synced": zod.number().int().optional()
+  "synced": zod.number().int().optional(),
+  "run_id": zod.string().optional()
 })
 
 
@@ -144,11 +145,11 @@ export const JoinResponse = zod.object({
   "phone": zod.string(),
   "email": zod.string(),
   "branch_id": zod.number().int(),
-  "plan_id": zod.number().int(),
+  "plan_id": zod.number().int().nullable(),
   "plan_name": zod.string(),
-  "start_date": zod.string(),
-  "end_date": zod.string(),
-  "status": zod.enum(['ACTIVE', 'EXPIRED', 'PAUSED', 'CANCELLED', 'PENDING']),
+  "start_date": zod.string().nullable(),
+  "end_date": zod.string().nullable(),
+  "status": zod.enum(['ACTIVE', 'EXPIRED', 'PAUSED', 'CANCELLED', 'PENDING', 'MISSING']),
   "gender": zod.string().nullish(),
   "date_of_birth": zod.string().nullish(),
   "emergency_contact": zod.string().nullish(),
@@ -168,7 +169,7 @@ export const JoinResponse = zod.object({
   "member_name": zod.string(),
   "branch_id": zod.number().int(),
   "method": zod.string(),
-  "decision": zod.enum(['ALLOWED', 'DENIED', 'MANUAL_OVERRIDE']),
+  "decision": zod.enum(['ALLOWED', 'DENIED']),
   "reason": zod.string(),
   "occurred_at": zod.string(),
   "offline": zod.boolean(),
@@ -188,7 +189,8 @@ export const JoinResponse = zod.object({
 })).optional(),
   "imported": zod.number().int().optional(),
   "skipped": zod.number().int().optional(),
-  "synced": zod.number().int().optional()
+  "synced": zod.number().int().optional(),
+  "run_id": zod.string().optional()
 })
 
 
@@ -206,11 +208,11 @@ export const GetWorkspaceResponse = zod.object({
   "phone": zod.string(),
   "email": zod.string(),
   "branch_id": zod.number().int(),
-  "plan_id": zod.number().int(),
+  "plan_id": zod.number().int().nullable(),
   "plan_name": zod.string(),
-  "start_date": zod.string(),
-  "end_date": zod.string(),
-  "status": zod.enum(['ACTIVE', 'EXPIRED', 'PAUSED', 'CANCELLED', 'PENDING']),
+  "start_date": zod.string().nullable(),
+  "end_date": zod.string().nullable(),
+  "status": zod.enum(['ACTIVE', 'EXPIRED', 'PAUSED', 'CANCELLED', 'PENDING', 'MISSING']),
   "gender": zod.string().nullish(),
   "date_of_birth": zod.string().nullish(),
   "emergency_contact": zod.string().nullish(),
@@ -246,7 +248,7 @@ export const GetWorkspaceResponse = zod.object({
   "member_name": zod.string(),
   "branch_id": zod.number().int(),
   "method": zod.string(),
-  "decision": zod.enum(['ALLOWED', 'DENIED', 'MANUAL_OVERRIDE']),
+  "decision": zod.enum(['ALLOWED', 'DENIED']),
   "reason": zod.string(),
   "occurred_at": zod.string(),
   "offline": zod.boolean(),
@@ -270,7 +272,28 @@ export const GetWorkspaceResponse = zod.object({
   "status": zod.string(),
   "attempt": zod.number().int(),
   "created_at": zod.string(),
-  "final_status": zod.string()
+  "final_status": zod.string(),
+  "run_id": zod.string()
+})),
+  "notification_runs": zod.array(zod.object({
+  "id": zod.string(),
+  "member_id": zod.number().int(),
+  "member_name": zod.string(),
+  "started_at": zod.string(),
+  "final_status": zod.string(),
+  "legacy": zod.boolean(),
+  "uncertain": zod.boolean(),
+  "attempts": zod.array(zod.object({
+  "id": zod.number().int(),
+  "member_id": zod.number().int(),
+  "member_name": zod.string(),
+  "channel": zod.string(),
+  "status": zod.string(),
+  "attempt": zod.number().int(),
+  "created_at": zod.string(),
+  "final_status": zod.string(),
+  "run_id": zod.string()
+}))
 })),
   "system_events": zod.array(zod.object({
   "id": zod.number().int(),
@@ -292,7 +315,11 @@ export const GetWorkspaceResponse = zod.object({
   "checkins_today": zod.number().int(),
   "failed_notifications": zod.number().int(),
   "payments_today": zod.number(),
-  "followups": zod.number().int()
+  "followups": zod.number().int(),
+  "failed_notification_chains": zod.number().int(),
+  "failed_notification_attempts": zod.number().int(),
+  "followup_count": zod.number().int(),
+  "notification_failures": zod.number().int()
 }),
   "visit_trend": zod.array(zod.object({
   "date": zod.string(),
@@ -351,7 +378,7 @@ export const RunActionBody = zod.object({
   "member_name": zod.string(),
   "branch_id": zod.number().int(),
   "method": zod.string(),
-  "decision": zod.enum(['ALLOWED', 'DENIED', 'MANUAL_OVERRIDE']),
+  "decision": zod.enum(['ALLOWED', 'DENIED']),
   "reason": zod.string(),
   "occurred_at": zod.string(),
   "offline": zod.boolean(),
@@ -375,11 +402,11 @@ export const RunActionResponse = zod.object({
   "phone": zod.string(),
   "email": zod.string(),
   "branch_id": zod.number().int(),
-  "plan_id": zod.number().int(),
+  "plan_id": zod.number().int().nullable(),
   "plan_name": zod.string(),
-  "start_date": zod.string(),
-  "end_date": zod.string(),
-  "status": zod.enum(['ACTIVE', 'EXPIRED', 'PAUSED', 'CANCELLED', 'PENDING']),
+  "start_date": zod.string().nullable(),
+  "end_date": zod.string().nullable(),
+  "status": zod.enum(['ACTIVE', 'EXPIRED', 'PAUSED', 'CANCELLED', 'PENDING', 'MISSING']),
   "gender": zod.string().nullish(),
   "date_of_birth": zod.string().nullish(),
   "emergency_contact": zod.string().nullish(),
@@ -399,7 +426,7 @@ export const RunActionResponse = zod.object({
   "member_name": zod.string(),
   "branch_id": zod.number().int(),
   "method": zod.string(),
-  "decision": zod.enum(['ALLOWED', 'DENIED', 'MANUAL_OVERRIDE']),
+  "decision": zod.enum(['ALLOWED', 'DENIED']),
   "reason": zod.string(),
   "occurred_at": zod.string(),
   "offline": zod.boolean(),
@@ -419,7 +446,8 @@ export const RunActionResponse = zod.object({
 })).optional(),
   "imported": zod.number().int().optional(),
   "skipped": zod.number().int().optional(),
-  "synced": zod.number().int().optional()
+  "synced": zod.number().int().optional(),
+  "run_id": zod.string().optional()
 })
 
 

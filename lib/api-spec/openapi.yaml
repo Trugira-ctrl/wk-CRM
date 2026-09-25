@@ -162,11 +162,11 @@ components:
         phone: {type: string}
         email: {type: string}
         branch_id: {type: integer}
-        plan_id: {type: integer}
+        plan_id: {type: [integer, "null"]}
         plan_name: {type: string}
-        start_date: {type: string}
-        end_date: {type: string}
-        status: {type: string, enum: [ACTIVE, EXPIRED, PAUSED, CANCELLED, PENDING]}
+        start_date: {type: [string, "null"]}
+        end_date: {type: [string, "null"]}
+        status: {type: string, enum: [ACTIVE, EXPIRED, PAUSED, CANCELLED, PENDING, MISSING]}
         gender: {type: [string, "null"]}
         date_of_birth: {type: [string, "null"]}
         emergency_contact: {type: [string, "null"]}
@@ -201,7 +201,7 @@ components:
         member_name: {type: string}
         branch_id: {type: integer}
         method: {type: string}
-        decision: {type: string, enum: [ALLOWED, DENIED, MANUAL_OVERRIDE]}
+        decision: {type: string, enum: [ALLOWED, DENIED]}
         reason: {type: string}
         occurred_at: {type: string}
         offline: {type: boolean}
@@ -220,7 +220,7 @@ components:
         created_at: {type: string}
     Notification:
       type: object
-      required: [id, member_id, member_name, channel, status, attempt, created_at, final_status]
+      required: [id, member_id, member_name, channel, status, attempt, created_at, final_status, run_id]
       properties:
         id: {type: integer}
         member_id: {type: integer}
@@ -230,6 +230,21 @@ components:
         attempt: {type: integer}
         created_at: {type: string}
         final_status: {type: string}
+        run_id: {type: string}
+    NotificationRun:
+      type: object
+      required: [id, member_id, member_name, started_at, final_status, legacy, uncertain, attempts]
+      properties:
+        id: {type: string}
+        member_id: {type: integer}
+        member_name: {type: string}
+        started_at: {type: string}
+        final_status: {type: string}
+        legacy: {type: boolean}
+        uncertain: {type: boolean}
+        attempts:
+          type: array
+          items: {$ref: "#/components/schemas/Notification"}
     SystemEvent:
       type: object
       required: [id, type, message, created_at]
@@ -249,7 +264,7 @@ components:
         imported_at: {type: string}
     Metrics:
       type: object
-      required: [active_members, expiring_week, expired_members, checkins_today, failed_notifications, payments_today, followups]
+      required: [active_members, expiring_week, expired_members, checkins_today, failed_notifications, payments_today, followups, failed_notification_chains, failed_notification_attempts, followup_count, notification_failures]
       properties:
         active_members: {type: integer}
         expiring_week: {type: integer}
@@ -258,6 +273,10 @@ components:
         failed_notifications: {type: integer}
         payments_today: {type: number}
         followups: {type: integer}
+        failed_notification_chains: {type: integer}
+        failed_notification_attempts: {type: integer}
+        followup_count: {type: integer}
+        notification_failures: {type: integer}
     VisitTrend:
       type: object
       required: [date, branch1, branch2, branch3]
@@ -278,7 +297,7 @@ components:
           items: {$ref: "#/components/schemas/Branch"}
     Workspace:
       type: object
-      required: [user, members, plans, branches, access_events, payments, notifications, system_events, migrations, metrics, visit_trend, demo_generation]
+      required: [user, members, plans, branches, access_events, payments, notifications, notification_runs, system_events, migrations, metrics, visit_trend, demo_generation]
       properties:
         user: {$ref: "#/components/schemas/User"}
         members:
@@ -299,6 +318,9 @@ components:
         notifications:
           type: array
           items: {$ref: "#/components/schemas/Notification"}
+        notification_runs:
+          type: array
+          items: {$ref: "#/components/schemas/NotificationRun"}
         system_events:
           type: array
           items: {$ref: "#/components/schemas/SystemEvent"}
@@ -365,3 +387,4 @@ components:
         imported: {type: integer}
         skipped: {type: integer}
         synced: {type: integer}
+        run_id: {type: string}

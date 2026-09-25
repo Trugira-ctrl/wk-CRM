@@ -72,7 +72,7 @@ come from actual persisted fictional records, not hardcoded UI totals.
 
 ## Development
 
-Prerequisites: Node.js 24, pnpm, Python 3.12 and PostgreSQL.
+Prerequisites: Node.js 24, pnpm 10.26.1 (pinned via Corepack), Python 3.12 and PostgreSQL.
 
 ```sh
 corepack enable
@@ -109,6 +109,18 @@ pnpm run typecheck:libs
 pnpm --filter @workspace/waka run typecheck
 python -m compileall -q backend
 ```
+
+Backend behavioral regressions run against a separate in-memory SQLite database,
+not the current demo dataset:
+
+```sh
+python -m unittest backend.test_regressions
+```
+
+These checks cover membership/credential decisions, reminder chains, CSV replay,
+role boundaries, simulated Join/renewal and offline idempotency. They complement,
+not replace, browser acceptance and validation on the intended PostgreSQL/VPS
+deployment.
 
 FastAPI validates runtime requests; generated Zod code is retained for the
 monorepo contract tooling, not used as the Python runtime validator.
@@ -159,6 +171,39 @@ docker compose down           # keeps database volume
 The Docker setup is provided for export and has not been executed in this
 development environment. Validate it on the intended host before a demo or
 release. It defaults to **demo**, not hardened production.
+
+### Export and updates without data loss
+
+The repository is the handoff: export/push the code to your Git host, clone it
+on an ordinary Linux VPS, and follow the Compose commands above. No Replit
+login, connector, deployment service, or proprietary database SDK is needed
+at runtime. Only Next.js, FastAPI, PostgreSQL and the same-origin proxy run.
+Development-only preview configuration does not set the production hostname.
+
+Before updating an existing Compose installation, back up its database:
+
+```sh
+docker compose exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB"' > waka-backup.sql
+git pull
+docker compose build
+docker compose run --rm initialize
+docker compose up -d
+```
+
+The initializer creates missing initial tables and skips seeding when WAKA
+data exists; it does not reset records. Keep the same database volume and
+credentials. Changing `POSTGRES_PASSWORD` in `.env` does **not** change a
+password already stored inside an initialized PostgreSQL volume. Do not run
+`seed --reset`, `docker compose down -v`, or Drizzle schema push on that data.
+Future column changes require reviewed, versioned migrations; `create_all`
+is not an upgrade engine. This refinement does not require column changes.
+
+For an existing external PostgreSQL server, run the documented FastAPI/Next
+commands with your own `DATABASE_URL` and a same-origin reverse proxy; the
+included Compose file instead provisions its own PostgreSQL volume. Configure
+TLS on the VPS reverse proxy, set `COOKIE_SECURE=true` for HTTPS, and keep the
+database and API ports private. `FRONTEND_URL` documents the intended origin;
+it does not configure cross-origin browser access.
 
 ## Environment variables
 

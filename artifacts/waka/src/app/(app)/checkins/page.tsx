@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { format } from "date-fns";
 import { Activity, ShieldCheck, CheckCircle2, AlertTriangle, UserCheck, CreditCard, QrCode } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { isAllowed, denialReason } from "@/lib/waka-ops";
 
 export default function CheckinsPage() {
   const { data: workspace, refetch } = useGetWorkspace({
@@ -46,10 +47,11 @@ export default function CheckinsPage() {
     
     runAction.mutate({ data: payload }, {
       onSuccess: (res) => {
-        if (res.event?.decision === "ALLOWED") {
-          toast({ title: "Check-in Successful", description: res.event.member_name });
+        const event = res.event;
+        if (event && isAllowed(event.decision)) {
+          toast({ title: "Check-in allowed", description: event.member_name });
         } else {
-          toast({ title: "Check-in Denied", description: res.event?.reason, variant: "destructive" });
+          toast({ title: "Check-in Denied", description: denialReason(event?.reason), variant: "destructive" });
         }
         setSelectedMember("");
         setSelectedCredential("");
@@ -194,7 +196,7 @@ export default function CheckinsPage() {
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        {event.decision === "ALLOWED" ? (
+                        {isAllowed(event.decision) ? (
                           <div className="flex items-center text-green-600 text-xs font-bold uppercase tracking-widest">
                             <CheckCircle2 className="w-3 h-3 mr-1" /> Allowed
                           </div>
@@ -203,7 +205,7 @@ export default function CheckinsPage() {
                             <div className="flex items-center text-red-600 text-xs font-bold uppercase tracking-widest">
                               <AlertTriangle className="w-3 h-3 mr-1" /> Denied
                             </div>
-                            <div className="text-[10px] text-zinc-500 mt-0.5">{event.reason}</div>
+                            <div className="text-[10px] text-zinc-500 mt-0.5">{denialReason(event.reason)}</div>
                           </div>
                         )}
                       </td>

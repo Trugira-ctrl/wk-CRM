@@ -29,7 +29,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
         <div className="container mx-auto px-4 grid grid-cols-1 md:grid-cols-4 gap-8">
           <div>
             <div className="text-2xl font-display font-bold tracking-tighter uppercase text-white mb-4">WAKA</div>
-            <p className="text-xs">Premium fitness in Kigali. Redefining what it means to train.</p>
+            <p className="text-xs">Demonstration fitness concept for three Kigali branches. All prices, payments and people shown are illustrative.</p>
           </div>
           <div>
             <div className="font-bold uppercase tracking-widest text-white mb-4 text-xs">Locations</div>
@@ -42,18 +42,21 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
           <div>
             <div className="font-bold uppercase tracking-widest text-white mb-4 text-xs">Links</div>
             <ul className="space-y-2 text-xs">
-              <li>Memberships</li>
-              <li>Coaches</li>
-              <li>Member Stories</li>
+              <li><Link href="/website#memberships" className="hover:text-white">Memberships</Link></li>
+              <li><Link href="/website#coaches" className="hover:text-white">Coaches</Link></li>
+              <li><Link href="/website#stories" className="hover:text-white">Member Stories</Link></li>
             </ul>
           </div>
           <div>
             <div className="font-bold uppercase tracking-widest text-white mb-4 text-xs">Connect</div>
             <ul className="space-y-2 text-xs">
-              <li>Instagram</li>
-              <li>WhatsApp</li>
+              <li aria-disabled="true" className="cursor-default">Instagram <span className="text-zinc-600">— placeholder, destination unconfirmed</span></li>
+              <li aria-disabled="true" className="cursor-default">WhatsApp <span className="text-zinc-600">— placeholder, destination unconfirmed</span></li>
             </ul>
           </div>
+        </div>
+        <div className="container mx-auto px-4 mt-10 pt-6 border-t border-zinc-800 text-[10px] uppercase tracking-widest text-zinc-500">
+          Phase 1 proof of concept. Prices are illustrative demo amounts; payments are simulated and no real charge is made.
         </div>
       </footer>
     </div>

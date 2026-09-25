@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Wifi, WifiOff, CreditCard, ShieldAlert, CheckCircle, AlertTriangle, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { isAllowed } from "@/lib/waka-ops";
 
 export default function GateSimulatorPage() {
   const [isOffline, setIsOffline] = useState(false);
@@ -245,7 +246,7 @@ export default function GateSimulatorPage() {
         timeZone: "Africa/Kigali", year: "numeric", month: "2-digit", day: "2-digit",
       }).format(now);
 
-      if (foundMember.status !== 'ACTIVE' || foundMember.end_date < kigaliDate || foundMember.start_date > kigaliDate) {
+      if (foundMember.status !== 'ACTIVE' || typeof foundMember.start_date !== 'string' || typeof foundMember.end_date !== 'string' || !foundMember.start_date || !foundMember.end_date || foundMember.end_date.slice(0, 10) < kigaliDate || foundMember.start_date.slice(0, 10) > kigaliDate) {
         const event = {
           id: eventId,
           member_id: foundMember.id,
@@ -291,10 +292,11 @@ export default function GateSimulatorPage() {
         }
       }, {
         onSuccess: (res) => {
-          if (res.event?.decision === "ALLOWED") {
-            setGateResult("GRANTED", `ACCESS GRANTED - ${res.event.member_name}`);
+          const event = res.event;
+          if (event && isAllowed(event.decision)) {
+            setGateResult("GRANTED", `ACCESS GRANTED - ${event.member_name}`);
           } else {
-            setGateResult("DENIED", `ACCESS DENIED - ${res.event?.reason || "Unknown"}`);
+            setGateResult("DENIED", `ACCESS DENIED - ${event?.reason || "Unknown"}`);
           }
           refetch();
         },

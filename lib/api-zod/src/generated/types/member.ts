@@ -14,10 +14,13 @@ export interface Member {
   phone: string;
   email: string;
   branch_id: number;
-  plan_id: number;
+  /** @nullable */
+  plan_id: number | null;
   plan_name: string;
-  start_date: string;
-  end_date: string;
+  /** @nullable */
+  start_date: string | null;
+  /** @nullable */
+  end_date: string | null;
   status: MemberStatus;
   /** @nullable */
   gender?: string | null;

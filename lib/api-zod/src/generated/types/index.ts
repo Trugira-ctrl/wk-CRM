@@ -26,6 +26,7 @@ export * from './metrics';
 export * from './migrationRecord';
 export * from './migrationRow';
 export * from './notification';
+export * from './notificationRun';
 export * from './payment';
 export * from './plan';
 export * from './publicData';

@@ -1,5 +1,6 @@
 import csv
 import io
+import uuid
 from datetime import timedelta
 from urllib.parse import urlparse
 
@@ -137,7 +138,7 @@ def join(body: dict, response: Response, db: Session = Depends(get_db)):
     if not body.get("password"):
         raise HTTPException(400, detail="Password is required to create a member login")
     try:
-        member, user = create_member(db, body, record_default=True, create_login=True)
+        member, user = create_member(db, {**body, "record_payment": True}, record_default=True, create_login=True)
         token = create_session(db, user)
         db.commit()
     except Exception:
@@ -167,10 +168,14 @@ def actions(body: dict, response: Response, user: User = Depends(current_user), 
 
 
 @app.get("/api/sample-export.csv", response_class=PlainTextResponse)
-def sample_export(user: User = Depends(current_user)):
+def sample_export(user: User = Depends(current_user), db: Session = Depends(get_db)):
     if user.role != "ADMIN":
         raise HTTPException(403, detail="Administrator role required")
     day = today()
+    batch = uuid.uuid4().hex
+    plans = db.scalars(select(Plan).order_by(Plan.id)).all()
+    if not plans:
+        raise HTTPException(409, detail="Create a membership plan before downloading the sample")
     fields = ["source_record_id", "full_name", "email", "phone", "plan", "start_date", "end_date", "branch_id"]
     names = [
         ("FB-1001","Diane Ishimwe","diane.ishimwe@example.test","+250788200101","Monthly",2),
@@ -187,9 +192,17 @@ def sample_export(user: User = Depends(current_user)):
     output = io.StringIO(); writer = csv.DictWriter(output, fieldnames=fields); writer.writeheader()
     durations = {"Monthly":30, "Quarterly":90, "Annual":365, "Legacy Gold":30}
     for index, (sid, name, email, phone, plan, branch) in enumerate(names):
+        sid = f"{batch}-{sid}"
+        email = f"{batch}.{email}"
+        duration = durations[plan]
+        if index != 9:
+            selected = plans[index % len(plans)]
+            plan, duration = selected.name, selected.duration_days
+        else:
+            plan = f"Unknown sample plan {batch}"
         start = day - timedelta(days=index + 1)
         writer.writerow({"source_record_id":sid, "full_name":name, "email":email, "phone":phone,
                          "plan":plan, "start_date":start.isoformat(),
-                         "end_date":(start + timedelta(days=durations[plan])).isoformat(), "branch_id":branch})
+                         "end_date":(start + timedelta(days=duration)).isoformat(), "branch_id":branch})
     return PlainTextResponse(output.getvalue(), media_type="text/csv",
                              headers={"Content-Disposition": 'attachment; filename="fitbase_sample_export.csv"'})

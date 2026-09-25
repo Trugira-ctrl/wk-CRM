@@ -1,5 +1,6 @@
 import csv
 import io
+import json
 import uuid
 from datetime import datetime, timedelta, timezone
 
@@ -28,7 +29,8 @@ def require(condition, status, detail):
 
 def get_member(db, member_id):
     member = db.scalar(select(Member).where(Member.id == member_id).options(
-        selectinload(Member.credentials), selectinload(Member.memberships).selectinload(Membership.plan)))
+        selectinload(Member.credentials), selectinload(Member.memberships).selectinload(Membership.plan))
+        .execution_options(populate_existing=True))
     require(member, 404, "Member not found")
     return member
 
@@ -47,8 +49,9 @@ def validate_member_input(db: Session, data: dict, existing: Member | None = Non
     require(plan, 400, "Unknown plan")
     duplicate = db.scalar(select(Member).where(func.lower(Member.email) == email))
     require(not duplicate or (existing and duplicate.id == existing.id), 409, "A member with this email already exists")
-    start = parse_date(data.get("start_date"), "start_date", True) or (current_membership(existing).start_date if existing else today())
-    end = parse_date(data.get("end_date"), "end_date", True) or (current_membership(existing).end_date if existing else start + timedelta(days=plan.duration_days))
+    old = current_membership(existing) if existing else None
+    start = parse_date(data.get("start_date"), "start_date", True) or (old.start_date if old else today())
+    end = parse_date(data.get("end_date"), "end_date", True) or (old.end_date if old else start + timedelta(days=plan.duration_days))
     require(end >= start, 400, "end_date must be on or after start_date")
     dob = parse_date(data.get("date_of_birth"), "date_of_birth", True)
     require(not dob or dob < today(), 400, "date_of_birth must be in the past")
@@ -158,7 +161,11 @@ def run_action(db: Session, user: User, body: dict):
         for field in ("full_name", "email", "phone", "branch_id", "gender", "emergency_contact", "notes"):
             setattr(m, field, v[field])
         m.date_of_birth = v["dob"]
-        ms = current_membership(m); ms.plan_id = v["plan"].id; ms.start_date = v["start"]; ms.end_date = v["end"]
+        ms = current_membership(m)
+        if ms is None:
+            ms = Membership(member_id=m.id, status="ACTIVE", created_at=now())
+            db.add(ms)
+        ms.plan_id = v["plan"].id; ms.start_date = v["start"]; ms.end_date = v["end"]
         linked = db.scalar(select(User).where(User.member_id == m.id))
         if linked: linked.name, linked.email = m.full_name, m.email
         audit(db, "MEMBER_UPDATED", f"{m.full_name} updated by {user.email}")
@@ -181,9 +188,11 @@ def run_action(db: Session, user: User, body: dict):
         m = get_member(db, body.get("member_id"))
         require(user.role != "MEMBER" or user.member_id == m.id, 403, "Members may only renew their own membership")
         plan = db.get(Plan, body.get("plan_id")); require(plan, 404, "Plan not found")
-        old = current_membership(m); start = max(today(), old.end_date)
+        old = current_membership(m)
+        start = old.start_date if old and effective_status(old) == "ACTIVE" else today()
+        end = max(today(), old.end_date) if old and effective_status(old) == "ACTIVE" else today()
         db.add(Membership(member_id=m.id, plan_id=plan.id, start_date=start,
-                          end_date=start + timedelta(days=plan.duration_days), status="ACTIVE", created_at=now()))
+                          end_date=end + timedelta(days=plan.duration_days), status="ACTIVE", created_at=now()))
         db.add(Payment(member_id=m.id, amount=plan.price, currency="RWF", provider="SIMULATED", status="SUCCESS", created_at=now()))
         audit(db, "MEMBERSHIP_RENEWED", f"{m.full_name} renewed {plan.name}")
         db.commit(); return {"ok": True, "message": "Membership renewed with simulated payment", "member": member_json(get_member(db, m.id))}
@@ -233,7 +242,7 @@ def checkin(db: Session, user: User, body: dict):
     except (TypeError, ValueError): raise HTTPException(400, detail="Valid branch_id is required")
     branch = db.get(Branch, branch_id); require(branch, 404, "Branch not found")
     method = body.get("method")
-    require(method in METHODS[branch_id], 400, f"Method is not supported at {branch.name}")
+    require(method in METHODS.get(branch_id, set()), 400, f"Method is not supported at {branch.name}")
     member, credential, reason, decision = None, None, "", "DENIED"
     if method == "MANUAL_RECEPTION":
         member = db.get(Member, body.get("member_id"))
@@ -255,10 +264,8 @@ def checkin(db: Session, user: User, body: dict):
         status = effective_status(ms)
         if status != "ACTIVE":
             reason = f"Membership is {status.lower()}"
-        elif not (ms.start_date <= today() <= ms.end_date):
-            reason = "Membership is outside its valid dates"
         else:
-            decision, reason = ("MANUAL_OVERRIDE" if method == "MANUAL_RECEPTION" else "ALLOWED"), "Membership valid"
+            decision, reason = "ALLOWED", "Membership valid"
     event = AccessEvent(id=str(uuid.uuid4()), member_id=member.id if member else None,
                         member_name=member.full_name if member else "Unknown",
                         branch_id=branch_id, method=method, decision=decision, reason=reason,
@@ -282,13 +289,22 @@ def reminders(db: Session, body: dict):
                 ("SMS", "FAILED" if fail else "DELIVERED")]
     if fail: sequence.append(("EMAIL", "FAILED"))
     base = now()
+    run_id = str(uuid.uuid4())
+    attempts = []
     for index, (channel, status) in enumerate(sequence, 1):
-        db.add(NotificationEvent(member_id=member.id, channel=channel, status=status,
+        event = NotificationEvent(member_id=member.id, channel=channel, status=status,
                                  attempt=index, final_status=final,
-                                 created_at=base + timedelta(seconds=index)))
+                                 created_at=base + timedelta(seconds=index))
+        db.add(event)
+        attempts.append(event)
+    db.flush()
+    # Exact IDs, not ID ranges: concurrent transactions may interleave sequences.
+    # Registry and attempts commit together; no schema change or legacy rewrite.
+    db.add(Config(key="notification_run:" + run_id,
+                  value=json.dumps({"event_ids": [n.id for n in attempts]})))
     audit(db, "REMINDER_COMPLETE", f"{member.full_name}: {final}")
     db.commit()
-    return {"ok": True, "message": final}
+    return {"ok": True, "message": final, "run_id": run_id}
 
 
 def sync_offline(db: Session, body: dict):
@@ -323,7 +339,9 @@ def sync_offline(db: Session, body: dict):
         if existing:
             require(existing.offline and existing.member_id == member_id and
                     existing.branch_id == 1 and existing.method == "SPEEDGATE_CARD" and
-                    existing.decision == raw["decision"] and existing.occurred_at == occurred,
+                    existing.decision == raw["decision"] and
+                    (existing.occurred_at.replace(tzinfo=timezone.utc) if existing.occurred_at.tzinfo is None
+                     else existing.occurred_at) == occurred,
                     409, "Offline event UUID conflicts with a different event")
             continue
         db.add(AccessEvent(id=event_id, member_id=member.id, member_name=member.full_name,
@@ -351,9 +369,7 @@ def import_migration(db: Session, rows):
     plans = {p.name.lower(): p for p in db.scalars(select(Plan)).all()}
     for raw, valid in zip(rows, checked):
         sid = valid["source_record_id"]
-        replay = db.scalar(select(MigrationRecord).where(
-            (MigrationRecord.source_record_id == sid) |
-            (func.lower(MigrationRecord.source_email) == valid["email"].lower())))
+        replay = db.scalar(select(MigrationRecord).where(MigrationRecord.source_record_id == sid))
         if replay:
             skipped += 1
             continue

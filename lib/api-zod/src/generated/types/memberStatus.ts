@@ -15,4 +15,5 @@ export const MemberStatus = {
   PAUSED: 'PAUSED',
   CANCELLED: 'CANCELLED',
   PENDING: 'PENDING',
+  MISSING: 'MISSING',
 } as const;

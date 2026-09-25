@@ -32,6 +32,26 @@ rows. Normalized relationships permit multiple credential types per member.
 Monetary amounts represent whole Rwandan francs, not USD or fractional RWF.
 Membership business dates are evaluated in Africa/Kigali.
 
+### Access decisions and notification runs
+
+Manual reception, card, QR and simulated gate access share the same server-side
+membership predicate: ACTIVE with inclusive start/end dates in Africa/Kigali.
+Credential methods additionally require the expected credential type and an
+active credential. Successful checks return ALLOWED. Historical MANUAL_OVERRIDE
+values are normalized in API responses only; stored historical records remain
+unchanged.
+
+Notification delivery attempts and scenario runs are distinct. New scenarios
+persist a UUID-to-exact-event-ID association atomically in the existing config
+table, avoiding a schema change on this POC's existing databases. Exact IDs,
+rather than ID ranges, keep concurrent runs separate. A normalized run table
+with foreign keys is a future schema migration, not required for this update.
+Known complete historical sequences can be reconstructed and marked legacy;
+ambiguous fragments remain explicitly uncertain rather than inventing a final
+outcome. Failed chains count only STAFF FOLLOW-UP REQUIRED runs. Failed attempts
+also include delivery failures that subsequently recovered via SMS. Neither
+metric affects membership validity or access decisions.
+
 ## Ownership and authorization
 
 HTTP-only sessions are stored as hashed tokens in the database. Passwords use
