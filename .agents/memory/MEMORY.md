@@ -1,3 +1,5 @@
 - [Next.js preview origins](next-preview-origins.md) — development hosts can have nested subdomains; a single-level wildcard may not permit hot reload.
 - [Notification run identity](notification-run-identity.md) — preserve explicit scenario boundaries; retries are attempts, and ambiguous historical fragments must stay uncertain.
 - [WAKA brand reference](waka-brand-reference.md) — use the supplied WAKA PAY image for visual direction, not as authorization to change plan prices.
+- [Synchronous API load tests](sync-api-load-tests.md) — service tests can pass while HTTP dependencies exhaust workers and DB connections; test through HTTP too.
+- [WAKA stabilization scope](waka-stabilization-scope.md) — preserve architecture and simulations; no reactivation fees; intended production is independent VPS/AWS.

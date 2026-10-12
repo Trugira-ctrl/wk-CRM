@@ -1,3 +1,12 @@
+# Stabilization status
+
+See [STABILIZATION_REPORT.md](STABILIZATION_REPORT.md),
+[TEST_REPORT.md](TEST_REPORT.md), [DEPLOYMENT.md](DEPLOYMENT.md), and
+[ARCHITECTURE.md](ARCHITECTURE.md) for the current engineering state.
+These supersede older POC setup notes: migrations are now versioned; Compose
+initialization no longer seeds; production simulations fail closed. Docker and
+target-server acceptance remain unverified. The work is not overall complete.
+
 # WAKA Management Platform — Phase 1 POC
 
 A functional, portable proof of concept for WAKA's three-branch gym operation

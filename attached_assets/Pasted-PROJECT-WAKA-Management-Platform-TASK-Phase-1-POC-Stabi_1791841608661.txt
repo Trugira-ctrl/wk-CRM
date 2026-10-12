@@ -1,0 +1,2132 @@
+PROJECT: WAKA Management Platform
+TASK: Phase 1 POC Stabilization, Security Hardening,
+Data Integrity, Performance Improvements, and Deployment Readiness
+
+ROLE
+
+Act as a senior full-stack software engineer, software architect,
+database engineer, DevOps engineer, and QA automation engineer.
+
+You are working on an existing WAKA Gym Management Platform
+proof-of-concept.
+
+Your task is to IMPROVE the existing application, not rebuild it.
+
+An independent technical audit conducted on October 12, 2026
+identified several critical defects involving:
+
+- Membership renewals
+- Financial data consistency
+- Concurrent transactions
+- Authorization and production security
+- Offline access synchronization
+- Management reporting
+- Database performance
+- Docker portability
+- Error handling
+- Deployment readiness
+
+Your goal is to systematically correct these issues while
+preserving the existing functionality, design, and architecture.
+
+IMPORTANT:
+
+Do not interpret this request as permission to redesign the
+entire application.
+
+Do not start from scratch.
+
+Do not replace working components unnecessarily.
+
+Do not introduce microservices, Kubernetes, or complicated
+infrastructure without demonstrated justification.
+
+Prioritize correctness, maintainability, reliability,
+security, and deployment portability over adding features.
+
+
+==================================================
+1. PROJECT BACKGROUND
+==================================================
+
+WAKA is a gym business operating three branches in Kigali, Rwanda.
+
+The platform is intended to replace Fitbase with a dedicated
+WAKA-owned gym management system.
+
+The long-term product includes:
+
+- Member registration
+- Membership management
+- Membership plans
+- Membership renewals
+- Payment processing
+- Card enrollment
+- Branch check-ins
+- Speedgate integration
+- Offline-capable access control
+- Member self-service
+- Public-facing website
+- Notification workflows
+- Management reporting
+- Automation through n8n
+- Fitbase data migration
+
+IMPORTANT BUSINESS CONSTRAINTS:
+
+WAKA has THREE branches.
+
+Only ONE branch currently has physical speedgates.
+
+The other TWO branches operate through reception-based check-ins.
+
+WAKA does not charge membership reactivation fees.
+
+Other fines and penalties remain unverified.
+
+Existing physical membership cards should ideally be reused
+through re-enrollment if hardware compatibility permits.
+
+Actual speedgate hardware compatibility is not yet confirmed.
+
+Real Fitbase export/API capabilities are not yet confirmed.
+
+Real payment and messaging providers are not yet integrated.
+
+The existing integrations in the POC are SIMULATED.
+
+Never remove or obscure those simulation disclosures.
+
+
+==================================================
+2. DEVELOPMENT AND DEPLOYMENT STRATEGY
+==================================================
+
+The application was developed using Replit.
+
+However, Replit is NOT intended to be the long-term
+production hosting environment.
+
+The intended workflow is:
+
+Replit Development
+       |
+       v
+Git Repository
+       |
+       v
+Automated Tests
+       |
+       v
+Docker Build
+       |
+       v
+Self-Managed VPS / AWS / Cloud Infrastructure
+       |
+       v
+WAKA Production Platform
+
+Changes should eventually be deployed through Git-based
+version control and CI/CD.
+
+The application must remain portable.
+
+Do not introduce dependencies requiring Replit-specific
+production services.
+
+The audit identified the following existing stack:
+
+Frontend:
+Next.js / React / TypeScript
+
+Backend:
+FastAPI / Python
+
+Database:
+PostgreSQL
+
+ORM:
+SQLAlchemy
+
+Existing Docker configuration is present but has
+cross-platform build issues.
+
+n8n and Redis may be introduced later where justified.
+
+Do not add them merely to make the architecture look
+more sophisticated.
+
+Preserve this stack unless an actual technical limitation
+requires a change.
+
+
+==================================================
+3. READ THIS BEFORE CHANGING CODE
+==================================================
+
+First inspect the repository carefully.
+
+Identify:
+
+- Existing implementation
+- Database schema
+- Membership and renewal logic
+- Payment-related code
+- Authentication and session handling
+- Authorization rules
+- Access-control logic
+- Offline simulator
+- Sync implementation
+- Management reporting queries
+- Database connection management
+- Frontend/backend API contracts
+- Docker configuration
+- Existing tests
+
+The October 12 audit used:
+
+Repository baseline:
+5002c51
+
+Audit branch:
+audit/waka-poc-2026-10-12
+
+If available in the repository or connected workspace,
+read:
+
+ARCHITECTURE.md
+REQUIREMENTS.md
+FUNCTIONAL.md
+PERFORMANCE.md
+SECURITY.md
+READINESS.md
+BACKLOG.md
+ROADMAP.md
+
+These are audit deliverables and may not exist inside
+this Replit workspace.
+
+Do not assume they are present.
+
+If available, use them to supplement the findings
+described below.
+
+Do not discard or overwrite existing uncommitted work.
+
+Create a dedicated stabilization branch if Git
+branching is available.
+
+Recommended branch name:
+
+fix/waka-poc-stabilization
+
+Before modifying code:
+
+1. Identify the relevant files.
+2. Understand the existing behavior.
+3. Identify the underlying defect.
+4. Write a regression test where practical.
+5. Implement the smallest reliable fix.
+6. Run tests.
+7. Verify no unrelated functionality broke.
+
+Do not make huge unrelated changes in a single step.
+
+
+==================================================
+4. VERIFIED AUDIT FINDINGS
+==================================================
+
+The following problems were observed during an independent
+technical assessment using fictional data and isolated tests.
+
+These are known findings that should guide your work.
+
+FINDING 1: RENEWAL DATA INCONSISTENCY
+
+Repeated membership renewal requests create additional
+payments and membership extensions.
+
+However, concurrent requests can overwrite one another.
+
+In one test:
+
+100 concurrent renewal requests were submitted.
+
+200 successful renewal requests/payment inserts should
+have represented 6,000 additional membership days.
+
+The final membership expiration increased by only
+3,210 days.
+
+Even lower-concurrency testing lost paid membership
+duration.
+
+This indicates serious transaction and concurrency
+correctness problems.
+
+FINDING 2: PRODUCTION MODE SECURITY
+
+Public registration/Join can still create simulated
+successful payments and ACTIVE memberships when the
+application is configured for production.
+
+Additionally, an existing privileged demo session
+remained accepted after demo login was disabled.
+
+FINDING 3: MEMBERSHIP DATE MANIPULATION
+
+Public Join accepted a user-supplied membership expiry
+approximately ten years into the future for a plan that
+should last only 30 days.
+
+Membership validity must be calculated by trusted
+server-side business logic.
+
+FINDING 4: OFFLINE SYNCHRONIZATION
+
+The browser-based gate simulator can make cached access
+decisions while API communication is blocked.
+
+It also stores events across page reloads.
+
+However, an offline unknown-card denial has no member_id.
+
+When synchronized, this event causes the entire batch
+to fail.
+
+The simulator also cannot be initially loaded while
+the backend is unavailable.
+
+It is NOT an independent installed branch controller.
+
+FINDING 5: INCORRECT REVENUE AGGREGATION
+
+The management dashboard calculates revenue using
+a limited list of recent payment records.
+
+In one synthetic test:
+
+Dashboard:
+200 RWF
+
+Actual matching database records:
+750,205 RWF
+
+The dashboard must not calculate financial totals
+from a capped display list.
+
+FINDING 6: DATABASE CONNECTION EXHAUSTION
+
+At 100 concurrent workspace reads:
+
+40% returned HTTP 500.
+
+Errors included database connection-pool timeouts.
+
+P95 latency reached approximately 33.5 seconds.
+
+The previous load test stopped when the environment
+became unstable.
+
+FINDING 7: DOCKER PORTABILITY
+
+The original frontend Docker build succeeded on
+AMD64 Linux.
+
+ARM Linux Compose and macOS builds failed because
+native dependencies were explicitly excluded.
+
+The application was eventually run outside Replit
+using an already-built AMD64 frontend image.
+
+However, clean reproducible builds across supported
+architectures remain unresolved.
+
+FINDING 8: ADDITIONAL PRODUCTION GAPS
+
+The audit also recommended:
+
+- Typed request validation
+- Better API error handling
+- Stronger transaction boundaries
+- Improved audit records
+- Reliable background event handling
+- Versioned database migrations
+- Production monitoring
+- Proper backup and recovery documentation
+- Explicit separation of simulations from real integrations
+- Better branch-access trust boundaries
+
+These should be addressed appropriately without
+overengineering the POC.
+
+
+==================================================
+5. WORKING STRATEGY
+==================================================
+
+Organize your work into FOUR implementation stages.
+
+STAGE 1:
+Financial correctness and security
+
+STAGE 2:
+Offline access synchronization and reliability
+
+STAGE 3:
+Database performance, reporting, and error handling
+
+STAGE 4:
+Docker portability and deployment preparation
+
+Within each stage:
+
+- Inspect the relevant code.
+- Reproduce the defect where feasible.
+- Add regression tests.
+- Implement the fix.
+- Verify the result.
+- Run existing tests.
+- Document changes.
+
+Complete the stages in priority order.
+
+Do not skip critical correctness defects to work
+on cosmetic improvements.
+
+If the environment cannot support a particular test,
+document the limitation instead of claiming success.
+
+Preserve existing demo functionality where doing so
+does not compromise the production security boundary.
+
+
+==================================================
+STAGE 1 — FINANCIAL CORRECTNESS AND SECURITY
+==================================================
+
+This is the highest-priority stage.
+
+------------------------------------------
+1A. FIX MEMBERSHIP RENEWAL CONCURRENCY
+------------------------------------------
+
+Investigate the membership renewal implementation.
+
+Determine how:
+
+- Payments are created
+- Membership end dates are calculated
+- Renewals are committed
+- Concurrent updates are handled
+- Membership status is updated
+
+Fix the lost-update problem.
+
+Ensure renewal processing is atomic and consistent.
+
+For PostgreSQL, consider appropriate mechanisms such as:
+
+- Database transactions
+- Row-level locking
+- Conditional updates
+- Optimistic concurrency control
+- Unique constraints
+- Idempotency keys
+
+Select the appropriate implementation based on
+the existing architecture.
+
+Do not implement concurrency control only in
+frontend JavaScript.
+
+The backend and database must enforce correctness.
+
+MEMBERSHIP EXTENSION RULE
+
+For a successful renewal, the existing entitlement
+and newly purchased duration must be handled correctly.
+
+For an active membership:
+
+Extend the current entitlement according to the
+configured membership plan.
+
+For an expired membership:
+
+Calculate the new entitlement using the appropriate
+renewal policy and current date.
+
+Do not accidentally restart valid active membership
+time from today's date.
+
+Do not allow concurrent transactions to overwrite
+previous successful extensions.
+
+Do not assume every plan lasts exactly 30 days.
+
+Inspect the plan model and use its defined duration
+and business rules.
+
+If policy details are ambiguous, isolate them in
+configurable business logic and document the assumptions.
+
+DATES AND TIMEZONES
+
+Use consistent date/time handling.
+
+Account for Africa/Kigali as the gym's local timezone.
+
+Avoid off-by-one-day errors caused by inconsistent
+UTC and local calendar-date calculations.
+
+Where memberships are represented using date-only
+validity, define the inclusive/exclusive semantics
+explicitly.
+
+Ensure the same rules are used in:
+
+- Membership screens
+- Renewal logic
+- Check-in validation
+- Expiration calculations
+- Management reports
+
+
+------------------------------------------
+1B. IMPLEMENT PAYMENT IDEMPOTENCY
+------------------------------------------
+
+A renewal should not be processed twice simply
+because the same request was retried.
+
+Introduce a reliable idempotency mechanism.
+
+Example:
+
+A member submits renewal request ABC123.
+
+The request succeeds.
+
+The client does not receive the response and retries.
+
+The backend must recognize the existing operation.
+
+It must NOT create a second payment or grant a
+second entitlement for the same logical request.
+
+However, two genuinely separate confirmed purchases
+must remain two valid purchases.
+
+Do not implement a blanket restriction such as
+"one renewal per member per day."
+
+Use transaction identifiers or idempotency keys
+with appropriate database constraints.
+
+Where relevant, store:
+
+- Operation identifier
+- Idempotency key
+- Member
+- Membership
+- Payment reference
+- Status
+- Timestamp
+- Result
+
+Protect against both sequential and concurrent
+duplicate submissions.
+
+Document how a future real payment-provider webhook
+would use provider transaction identifiers.
+
+Do not implement a fake production payment webhook.
+
+
+------------------------------------------
+1C. SECURE MEMBERSHIP ACTIVATION
+------------------------------------------
+
+The public Join flow must not be able to activate
+a production membership using a simulated payment.
+
+Establish an explicit separation between:
+
+DEMO / TEST MODE
+
+and
+
+PRODUCTION MODE
+
+In DEMO MODE:
+
+Simulated payment success may activate a fictional
+membership for testing.
+
+The UI must clearly indicate:
+
+SIMULATED PAYMENT
+
+In PRODUCTION MODE:
+
+Simulated payments must not be treated as real
+confirmed payments.
+
+Public Join must not grant active access without
+a trusted server-side payment confirmation or
+an authorized, auditable alternative activation path.
+
+Since no real payment provider is integrated yet,
+production payment-dependent activation should
+fail closed or remain PENDING.
+
+Do not invent a real processor integration.
+
+Do not expose a production bypass just to keep
+the demo looking functional.
+
+Do not allow the frontend to control payment success
+or membership activation.
+
+
+------------------------------------------
+1D. SECURE MEMBERSHIP DATE CALCULATIONS
+------------------------------------------
+
+Fix the issue where users can submit arbitrary
+membership expiry dates.
+
+The backend should derive membership validity from:
+
+- Selected membership plan
+- Verified payment or authorized activation
+- Server-side dates
+- Explicitly defined business policies
+
+A public user must not be able to specify:
+
+membership_end = 2036
+
+and receive a ten-year membership when purchasing
+a 30-day plan.
+
+Reject or ignore untrusted entitlement fields.
+
+Use typed request models with strict validation.
+
+Differentiate legitimate administrator-authorized
+membership adjustments from public user actions.
+
+Administrative changes should require authorization
+and generate audit records.
+
+Test negative and extreme values.
+
+Test invalid plans.
+
+Test malformed dates.
+
+Test attempted privilege escalation.
+
+
+------------------------------------------
+1E. FIX DEMO SESSION REVOCATION
+------------------------------------------
+
+Investigate the authentication/session architecture.
+
+The audit found that privileged demo sessions could
+remain valid after demo login was disabled.
+
+Correct this.
+
+When demo authentication is disabled:
+
+Existing privileged demo sessions must no longer
+grant access to protected operations.
+
+Enforce this on the server side.
+
+Do not rely only on hiding the demo login button.
+
+Consider:
+
+- Session validation
+- Session versioning
+- Session revocation
+- Production environment restrictions
+- Demo identity restrictions
+- Role validation on each protected request
+
+Choose the least complex secure implementation
+compatible with the existing system.
+
+Ensure demo-only privileges cannot survive an
+environment transition into production.
+
+Do not invalidate unrelated legitimate sessions
+without a clear reason.
+
+
+------------------------------------------
+1F. VERIFY ROLE-BASED AUTHORIZATION
+------------------------------------------
+
+Review the existing roles.
+
+At minimum:
+
+ADMIN
+MANAGEMENT
+RECEPTION
+MEMBER
+
+Verify:
+
+Members cannot read other members' records.
+
+Members cannot alter another member's membership.
+
+Reception users cannot access management-only
+administrative operations.
+
+Reception users cannot alter payment records
+outside explicitly authorized workflows.
+
+Members cannot directly activate memberships.
+
+Users cannot modify their own role.
+
+Protected API endpoints enforce permissions
+independently of frontend navigation.
+
+Add tests for unauthorized requests.
+
+
+------------------------------------------
+1G. STAGE 1 ACCEPTANCE TESTS
+------------------------------------------
+
+Create automated tests covering:
+
+1. Normal renewal.
+2. Renewal of an expired membership.
+3. Duplicate request using the same idempotency key.
+4. Two legitimate independent renewals.
+5. Concurrent independent renewals.
+6. Failed simulated payment.
+7. Production rejection of simulated payment activation.
+8. Public expiry-date manipulation.
+9. Demo session disabled after prior login.
+10. Unauthorized membership modification.
+
+For concurrency tests, use PostgreSQL rather than
+relying only on SQLite.
+
+Run increasing concurrency workloads:
+
+10
+25
+50
+100
+
+Use a bounded, isolated test environment.
+
+Verify:
+
+- No lost entitlement duration
+- No unintended duplicate payments
+- Correct transaction counts
+- Correct final membership validity
+- Consistent payment and membership records
+
+Do not treat HTTP 200 responses as proof of correctness.
+
+Compare final database state with expected values.
+
+If any test fails, investigate before moving forward.
+
+
+==================================================
+STAGE 2 — OFFLINE ACCESS RELIABILITY
+==================================================
+
+The long-term WAKA platform must support the gated
+branch operating during internet outages.
+
+However, the existing Phase 1 implementation is
+only a browser-based simulator.
+
+Preserve that distinction.
+
+Do not claim real physical gate integration exists.
+
+------------------------------------------
+2A. FIX OFFLINE EVENT SYNCHRONIZATION
+------------------------------------------
+
+Investigate the existing local event queue and
+synchronization endpoint.
+
+Fix the known defect:
+
+An unknown-card denial has no member_id.
+
+This must not cause all offline events to fail.
+
+Design the event schema so that unknown credentials
+and denied access events are represented correctly.
+
+For example:
+
+event_id
+branch_id
+credential_identifier or credential reference
+member_id (nullable when unknown)
+decision
+reason
+occurred_at
+device_id
+sync_status
+
+Unknown cards should not be assigned fabricated
+member identifiers.
+
+Preserve useful diagnostic information without
+unnecessarily exposing sensitive credential data.
+
+Validate all incoming synchronization records.
+
+Where appropriate, permit independently valid events
+to synchronize even if another event is malformed.
+
+Return structured per-event results when partial
+success is supported.
+
+Avoid silent data loss.
+
+
+------------------------------------------
+2B. IMPLEMENT IDEMPOTENT EVENT SYNCHRONIZATION
+------------------------------------------
+
+Offline events may be retried.
+
+The central backend must recognize previously
+processed events.
+
+Generate stable unique event identifiers.
+
+Use appropriate database uniqueness constraints.
+
+If the same offline batch is submitted twice:
+
+Do not create duplicate check-ins.
+
+If synchronization is interrupted:
+
+Already committed events must remain consistent.
+
+Unprocessed events must be retryable.
+
+Test:
+
+- Duplicate event
+- Duplicate batch
+- Out-of-order events
+- Unknown card
+- Disabled card
+- Expired membership
+- Partial failure
+- Interrupted synchronization
+- Reconnection after multiple offline check-ins
+
+
+------------------------------------------
+2C. IMPROVE OFFLINE STATE MANAGEMENT
+------------------------------------------
+
+The existing browser simulator should display
+its actual simulation state clearly.
+
+Distinguish:
+
+CLOUD ONLINE
+CLOUD OFFLINE
+LOCAL CACHE READY
+LOCAL CACHE STALE
+PENDING SYNCHRONIZATION
+SYNC IN PROGRESS
+SYNC FAILED
+SYNC COMPLETE
+
+Do not display a successful sync when the backend
+did not confirm the events.
+
+Do not discard queued events merely because a
+request failed.
+
+Store offline events persistently within the
+limits of the POC simulation.
+
+Where possible, test persistence across page reloads.
+
+Document that browser storage is not equivalent
+to a real branch controller.
+
+If full startup during a backend outage requires
+a future installed service, mark that limitation
+clearly rather than hiding it.
+
+
+------------------------------------------
+2D. ADDRESS CREDENTIAL STALENESS
+------------------------------------------
+
+Investigate the current offline authorization rules.
+
+Consider:
+
+A card is disabled while the branch is offline.
+
+A member's subscription expires during an outage.
+
+A membership is renewed while the branch cannot
+reach the central server.
+
+A credential's cached authorization expires.
+
+A device's clock is incorrect.
+
+For the POC:
+
+Create explicit, documented policies for these
+conditions.
+
+Use locally available expiry information where
+appropriate.
+
+Avoid blindly treating every cached credential
+as permanently valid.
+
+Consider configurable cache validity and revocation
+policies, but do not overcomplicate the simulator.
+
+A real installed controller and physical gate
+integration belong to a later implementation stage.
+
+Do not add real hardware code without knowing
+the manufacturer and protocol.
+
+
+------------------------------------------
+2E. SEPARATE ACCESS DECISIONS FROM AUTOMATION
+------------------------------------------
+
+Ensure the existing access logic does not depend
+on n8n or notification services.
+
+The future architecture should be:
+
+Credential
+   |
+   v
+Local Branch Access Service
+   |
+   v
+Membership / Credential Validation
+   |
+   v
+Access Decision
+   |
+   v
+Gate Controller
+
+n8n may receive events afterward.
+
+It must not decide whether a member can enter.
+
+Do not introduce n8n as part of this stabilization
+unless an existing component genuinely requires it.
+
+
+------------------------------------------
+2F. STAGE 2 ACCEPTANCE TESTS
+------------------------------------------
+
+Test:
+
+- Valid credential while online
+- Valid cached credential while simulated offline
+- Unknown credential while offline
+- Expired credential while offline
+- Disabled credential while offline
+- Multiple queued events
+- Reconnection
+- Repeated synchronization
+- Partial batch failure
+- Interrupted synchronization
+- Browser reload during simulated outage
+
+Verify that:
+
+Unknown-card denials do not block valid events.
+
+Duplicate events do not appear centrally.
+
+Queued events remain available until acknowledged.
+
+Sync status reflects actual results.
+
+No real speedgate operation is claimed.
+
+
+==================================================
+STAGE 3 — DATABASE PERFORMANCE AND REPORTING
+==================================================
+
+------------------------------------------
+3A. FIX MANAGEMENT REVENUE CALCULATIONS
+------------------------------------------
+
+Investigate how revenue is calculated.
+
+The audit found that revenue was summed from
+a capped list of recent payments.
+
+This is incorrect.
+
+Implement database-level aggregation over the
+appropriate complete set of payment records.
+
+Use an accurate reporting query.
+
+Do not calculate total revenue from a paginated
+display response.
+
+Define clearly which payment statuses count
+as collected revenue.
+
+Do not count failed, pending, or simulated payments
+as real collected production revenue.
+
+In demo mode, label simulated revenue accordingly.
+
+Support relevant filtering where already provided:
+
+- Date range
+- Branch
+- Membership plan
+- Payment status
+
+Ensure displayed figures match backend aggregation.
+
+For monetary values:
+
+Avoid floating-point rounding errors.
+
+Use appropriate decimal or integer minor-unit
+representations.
+
+Verify currency handling for RWF.
+
+Ensure results remain correct beyond 200 records.
+
+
+------------------------------------------
+3B. INVESTIGATE DATABASE CONNECTION EXHAUSTION
+------------------------------------------
+
+The audit observed significant failures during
+concurrent workspace reads.
+
+Investigate the root cause.
+
+Look for:
+
+- Database sessions not released promptly
+- Sessions held open during unrelated operations
+- Excessive parallel frontend requests
+- N+1 queries
+- Inefficient ORM relationships
+- Repeated dashboard queries
+- Missing indexes
+- Slow aggregation
+- Long-running transactions
+- Incorrect connection-pool configuration
+- Blocking work in asynchronous endpoints
+- Excessive polling
+
+Do not simply increase the connection-pool size
+without identifying the underlying problem.
+
+Fix inefficient queries and session lifecycle
+issues first.
+
+Then adjust connection settings if justified.
+
+Make pool settings configurable for deployment.
+
+Avoid unbounded concurrency.
+
+
+------------------------------------------
+3C. IMPROVE WORKSPACE ENDPOINTS
+------------------------------------------
+
+Review the management/reception workspace APIs.
+
+Determine whether they unnecessarily return:
+
+- Large member lists
+- Repeated statistics
+- Excessive nested relationships
+- Historical records not needed on initial load
+- Redundant queries
+
+Where appropriate:
+
+- Introduce pagination
+- Use efficient aggregation queries
+- Limit selected fields
+- Add database indexes
+- Reduce redundant frontend requests
+- Separate heavy reports from lightweight dashboard data
+
+Do not introduce unnecessary breaking API changes.
+
+If API response shapes must change:
+
+Update all affected frontend consumers.
+
+Add typed schemas and regression tests.
+
+
+------------------------------------------
+3D. IMPROVE ERROR HANDLING
+------------------------------------------
+
+Audit backend and frontend error behavior.
+
+Users should receive understandable messages
+when an operation fails.
+
+Examples:
+
+Membership could not be renewed.
+
+Payment is pending confirmation.
+
+Card is already assigned.
+
+Member not found.
+
+Unable to synchronize offline check-ins.
+
+Service temporarily unavailable.
+
+Avoid exposing:
+
+Database exceptions
+Internal stack traces
+Secrets
+Connection strings
+Sensitive implementation details
+
+Use consistent structured API errors.
+
+Ensure the frontend handles:
+
+- Loading
+- Success
+- Validation failure
+- Authorization failure
+- Network failure
+- Server failure
+- Retry where safe
+
+Do not show success if the backend operation failed.
+
+Avoid automatically retrying non-idempotent operations
+without a stable idempotency key.
+
+
+------------------------------------------
+3E. IMPROVE AUDIT LOGGING
+------------------------------------------
+
+Review important business actions.
+
+Ensure useful audit information exists for:
+
+- Member registration
+- Membership activation
+- Membership renewal
+- Payment status changes
+- Manual membership adjustment
+- Card assignment
+- Card deactivation
+- Access denial
+- Administrative overrides
+- Migration imports
+
+Audit records should include appropriate:
+
+Actor
+Action
+Entity
+Timestamp
+Result
+Relevant references
+
+Do not expose sensitive payment details or secrets.
+
+Avoid creating unnecessary duplicate audit events.
+
+Use structured records where practical.
+
+
+------------------------------------------
+3F. PERFORMANCE TESTING
+------------------------------------------
+
+Create repeatable performance test scripts.
+
+Use fictional data.
+
+Only run load tests against an isolated local
+or staging test environment.
+
+Do NOT load-test the published public Replit URL.
+
+Do NOT execute destructive load tests against
+real member records.
+
+Test progressively:
+
+10 concurrent users
+25 concurrent users
+50 concurrent users
+100 concurrent users
+
+Evaluate representative operations:
+
+- Member registration
+- Membership lookup
+- Workspace/dashboard reads
+- Card validation
+- Check-in recording
+- Membership renewal
+- Offline synchronization
+
+Measure:
+
+Average latency
+P95 latency
+Request throughput
+HTTP error rates
+Database pool failures
+Resource utilization where available
+
+Use realistic bounded test durations.
+
+Stop testing if the environment becomes unstable.
+
+Compare results against the previous audit findings.
+
+The previous test observed:
+
+100 concurrent workspace reads
+40% HTTP 500
+P95 approximately 33.5 seconds
+
+The goal is to eliminate the identified connection
+pool failures under a representative bounded workload.
+
+Do not promise production-scale capacity based only
+on Replit's development environment.
+
+If the runtime cannot execute meaningful load tests,
+provide scripts and document how to execute them
+against an isolated staging deployment.
+
+
+------------------------------------------
+3G. STAGE 3 ACCEPTANCE TESTS
+------------------------------------------
+
+Verify:
+
+1. Revenue totals use all matching records.
+2. Revenue reconciliation works beyond 200 payments.
+3. Financial aggregation excludes inappropriate statuses.
+4. Dashboard figures match the database.
+5. Repeated workspace requests release DB connections.
+6. Relevant concurrent reads do not trigger pool failures
+   at the supported test workload.
+7. Pagination behaves correctly.
+8. Error responses are consistent.
+9. Failed operations do not display false success.
+10. Existing reception/member flows still work.
+
+
+==================================================
+STAGE 4 — DEPLOYMENT PORTABILITY AND OPERATIONS
+==================================================
+
+The final platform will be hosted outside Replit.
+
+The current POC must become easier to export,
+build, test, and deploy on a VPS.
+
+------------------------------------------
+4A. FIX DOCKER BUILD PORTABILITY
+------------------------------------------
+
+Investigate the frontend Docker build.
+
+The audit found native dependency issues on:
+
+- ARM Linux
+- macOS build environments
+
+while AMD64 Linux succeeded.
+
+Inspect:
+
+- package.json
+- Lockfiles
+- Next.js native dependencies
+- Dockerfiles
+- Dependency installation commands
+- .dockerignore
+- Multi-stage build configuration
+- Platform assumptions
+
+Fix incorrect dependency exclusions.
+
+Ensure required native packages are installed for
+the target build platform.
+
+Do not commit platform-specific node_modules.
+
+Use reproducible dependency installation.
+
+Prefer clean builds from source rather than relying
+on previously generated images.
+
+Do not pretend multi-architecture compatibility
+has been verified unless it is actually tested.
+
+If Replit cannot build a particular architecture,
+document the exact verification command for CI.
+
+
+------------------------------------------
+4B. IMPROVE DOCKER COMPOSE
+------------------------------------------
+
+Review the current Docker Compose configuration.
+
+The intended future architecture is:
+
+Reverse Proxy
+    |
+    v
+Next.js Frontend
+    |
+    v
+FastAPI Backend
+    |
+    v
+PostgreSQL
+
+Additional components should be introduced only
+when required.
+
+Ensure:
+
+- Environment variables are documented
+- Services have appropriate health checks
+- Database data is persisted
+- Development settings are separated from production
+- Containers restart appropriately
+- Secrets are not hardcoded
+- Unnecessary database ports are not publicly exposed
+- Backend/database dependencies are handled correctly
+- Logs are accessible
+- Image builds are reproducible
+
+Avoid adding Kubernetes.
+
+Do not introduce a full production n8n deployment
+as part of this stabilization unless already required.
+
+
+------------------------------------------
+4C. DATABASE MIGRATIONS
+------------------------------------------
+
+Review current database initialization.
+
+Introduce or improve versioned database migrations.
+
+Prefer Alembic if compatible with the existing
+SQLAlchemy application.
+
+Do not rely exclusively on automatic table creation
+for production schema changes.
+
+Create migrations for any changes made during
+this stabilization.
+
+IMPORTANT:
+
+Do not delete existing data.
+
+Do not silently recreate the database.
+
+Do not perform destructive schema changes without
+an explicit migration and recovery plan.
+
+Make migrations idempotent where appropriate.
+
+Validate migrations against an isolated copy of
+the existing schema and data.
+
+Document deployment migration procedures.
+
+
+------------------------------------------
+4D. ADD HEALTH CHECKS
+------------------------------------------
+
+Provide useful health endpoints.
+
+Examples:
+
+GET /health
+GET /health/db
+
+If similar endpoints already exist, improve them
+rather than duplicating them.
+
+Health checks should be suitable for deployment
+monitoring.
+
+Do not expose sensitive configuration.
+
+Clearly distinguish application liveness from
+dependency readiness where useful.
+
+
+------------------------------------------
+4E. PRODUCTION CONFIGURATION
+------------------------------------------
+
+Review all environment variables.
+
+Create or update:
+
+.env.example
+
+Document required variables for:
+
+Database
+Application environment
+Session secrets
+Authentication
+Frontend/backend URLs
+Allowed origins
+Simulated integrations
+Logging
+Optional webhooks
+
+Validate security-sensitive production configuration
+at startup.
+
+Do not allow a production deployment to silently
+fall back to insecure demo defaults.
+
+Do not hardcode credentials.
+
+Do not commit secrets.
+
+If configuration is invalid, fail clearly rather
+than continuing insecurely.
+
+
+------------------------------------------
+4F. BACKUP AND RESTORE DOCUMENTATION
+------------------------------------------
+
+Document a practical backup strategy for PostgreSQL.
+
+Include:
+
+- Backup command
+- Restore procedure
+- Database consistency considerations
+- External backup storage
+- Backup retention considerations
+- Restoration testing
+- Operational responsibility
+
+Do not configure automatic external backups without
+credentials or approved infrastructure.
+
+Do not copy production member data into test systems.
+
+Document how WAKA could restore the platform after
+a server failure.
+
+
+------------------------------------------
+4G. CI/CD READINESS
+------------------------------------------
+
+Prepare the repository for Git-based deployment.
+
+If practical, add a GitHub Actions workflow that:
+
+- Installs dependencies
+- Runs frontend type checks
+- Runs backend tests
+- Runs linting where configured
+- Validates migrations
+- Builds application artifacts
+- Checks Docker build compatibility where supported
+
+Do not configure automatic production deployment yet.
+
+Do not require Replit to remain available once
+the code has been exported.
+
+Document how future changes could flow through:
+
+Developer
+   |
+   v
+Git Push
+   |
+   v
+Automated Tests
+   |
+   v
+Docker Build
+   |
+   v
+Staging
+   |
+   v
+Approved Production Deployment
+
+Production release approval should remain explicit.
+
+
+------------------------------------------
+4H. STAGE 4 ACCEPTANCE TESTS
+------------------------------------------
+
+Verify:
+
+1. The application does not require Replit services.
+2. Required environment variables are documented.
+3. Docker build succeeds in supported environments.
+4. Docker Compose configuration is valid.
+5. PostgreSQL data survives container restarts.
+6. Database migrations work on existing schema copies.
+7. Application health endpoints work.
+8. Production mode rejects insecure demo defaults.
+9. Automated test commands are documented.
+10. A clean checkout can be prepared for VPS deployment.
+
+If any test cannot run in Replit, mark it NOT VERIFIED
+and provide reproducible instructions.
+
+
+==================================================
+6. PRESERVE THE EXISTING PRODUCT
+==================================================
+
+While improving the application, preserve:
+
+PUBLIC WEBSITE
+
+- Homepage
+- Memberships
+- Coaches
+- Transformation stories
+- Branch information
+- Join WAKA
+- Member login
+
+MEMBER PORTAL
+
+- Membership details
+- Renewal workflow
+- Payment history
+- Recent visits
+
+RECEPTION
+
+- Member registration
+- Member lookup
+- Existing card registration
+- Manual check-in
+- Membership lookup
+- Renewal handling
+
+MANAGEMENT
+
+- Member overview
+- Payments
+- Branch activity
+- Check-in history
+- Notifications
+- Reporting
+
+POC SIMULATIONS
+
+- Payment simulation
+- Card reader simulation
+- Speedgate simulation
+- Offline gate simulator
+- Notification failure/recovery simulation
+- Sample Fitbase migration
+
+Do not remove working demonstrations unless required
+to correct a serious security or data-integrity problem.
+
+Where security requires restricting a demo feature,
+keep it usable in an explicit isolated DEMO environment.
+
+Maintain clear simulation labels.
+
+Do not convert simulated integrations into apparently
+real integrations.
+
+
+==================================================
+7. PRESERVE WAKA BRANDING AND UI
+==================================================
+
+The current interface was designed specifically
+for WAKA.
+
+Preserve its existing visual direction.
+
+Do not replace it with a generic admin dashboard.
+
+Do not perform an unrelated redesign.
+
+Improvements may include:
+
+- Better loading states
+- Clearer error messages
+- Better confirmation messages
+- Improved form validation
+- More accurate dashboard labels
+- Better sync status indicators
+- Clear production/demo mode distinctions
+
+Keep the design:
+
+- Premium
+- Modern
+- Athletic
+- Clean
+- Responsive
+- Easy for reception staff to use
+
+Do not introduce unnecessary visual complexity.
+
+The primary focus of this task is engineering
+correctness and reliability.
+
+
+==================================================
+8. AUTOMATION AND N8N ARCHITECTURE
+==================================================
+
+The long-term WAKA system will use self-hosted n8n
+for automations.
+
+Potential future workflows include:
+
+- Renewal reminders
+- Failed notification recovery
+- Member onboarding
+- Inactive-member follow-ups
+- Payment failure follow-ups
+- Management reports
+- Gate/controller outage alerts
+- Staff notifications
+- Lead management
+- Member milestones
+- Trainer workflows
+
+However:
+
+DO NOT implement all these workflows now.
+
+Do not make n8n responsible for core business logic.
+
+The backend should remain functional when n8n
+is unavailable.
+
+While stabilizing the current code, inspect whether
+important business operations produce reliable events.
+
+Examples:
+
+member.created
+membership.created
+membership.renewed
+membership.expired
+payment.completed
+payment.failed
+credential.assigned
+access.denied
+notification.failed
+
+Where appropriate, improve event durability and
+schema consistency.
+
+Consider a transactional outbox if necessary
+to reliably deliver events after database commits.
+
+Avoid adding unnecessary infrastructure merely
+for the POC.
+
+Document how n8n will integrate later.
+
+
+==================================================
+9. TESTING REQUIREMENTS
+==================================================
+
+Run the existing tests before making changes.
+
+Record the baseline.
+
+The previous audit reported:
+
+11 of 11 backend service regression tests passed.
+
+Do not assume that means all business logic was correct.
+
+Expand test coverage around the confirmed defects.
+
+At minimum, include:
+
+UNIT TESTS
+
+Membership calculations
+Payment idempotency
+Date validation
+Authorization decisions
+Offline event validation
+Revenue calculations
+
+INTEGRATION TESTS
+
+PostgreSQL transactions
+Concurrent renewals
+Payment/membership consistency
+Offline synchronization
+Database reporting
+Session invalidation
+
+END-TO-END TESTS
+
+Member registration
+Card assignment
+Check-in
+Renewal
+Expired membership
+Notification simulation
+Offline simulation
+Migration import
+Management dashboard
+
+NEGATIVE TESTS
+
+Invalid card
+Expired membership
+Duplicate payment
+Invalid plan
+Unauthorized API request
+Malformed input
+Invalid date
+Missing member
+Unavailable backend
+Interrupted synchronization
+
+Use fictional data only.
+
+Do not interact with WAKA's real customer records.
+
+Do not send real messages.
+
+Do not process real payments.
+
+Do not touch physical access hardware.
+
+Do not use the public published application
+for stress testing.
+
+
+==================================================
+10. CHANGE MANAGEMENT
+==================================================
+
+Work in small, reviewable increments.
+
+Preferred sequence:
+
+Commit 1:
+Renewal concurrency and transaction correctness
+
+Commit 2:
+Payment idempotency and entitlement validation
+
+Commit 3:
+Production/demo security separation
+
+Commit 4:
+Session and authorization fixes
+
+Commit 5:
+Offline synchronization reliability
+
+Commit 6:
+Revenue reporting correctness
+
+Commit 7:
+Database performance improvements
+
+Commit 8:
+Error handling and audit improvements
+
+Commit 9:
+Docker and migration improvements
+
+Commit 10:
+CI/CD, documentation, and final regression tests
+
+Adapt commit boundaries to the actual codebase.
+
+Do not force artificial commits if changes are
+closely related.
+
+After each major change:
+
+- Run relevant tests.
+- Check for regressions.
+- Inspect affected frontend behavior.
+- Confirm database consistency.
+
+Do not deploy changes automatically.
+
+Do not publish to production without approval.
+
+Do not merge into the main branch automatically
+unless explicitly instructed.
+
+
+==================================================
+11. PROGRESS REPORTING
+==================================================
+
+Provide concise updates after each stage.
+
+For each completed stage report:
+
+WHAT WAS WRONG
+
+Explain the root cause.
+
+WHAT CHANGED
+
+Explain the implementation.
+
+FILES MODIFIED
+
+List important files.
+
+TESTS EXECUTED
+
+Include actual commands and results.
+
+WHAT IMPROVED
+
+Explain the measurable difference.
+
+REMAINING RISKS
+
+Describe limitations.
+
+Do not claim a problem is fixed solely because
+the code compiles.
+
+Verify the behavior.
+
+Do not invent test results.
+
+
+==================================================
+12. FINAL DELIVERABLES
+==================================================
+
+When finished, provide:
+
+A. IMPLEMENTATION SUMMARY
+
+Explain all changes in plain English.
+
+B. CORRECTED ARCHITECTURE
+
+Show the resulting architecture.
+
+Distinguish implemented components from simulated
+or future components.
+
+C. TEST REPORT
+
+Document:
+
+Tests run
+Tests passed
+Tests failed
+Tests not executed
+Known limitations
+
+D. CONCURRENCY AND FINANCIAL VALIDATION
+
+Show evidence that concurrent membership renewals
+produce correct entitlements and payment records.
+
+Explain how duplicate requests are handled.
+
+E. OFFLINE SYNCHRONIZATION VALIDATION
+
+Show that:
+
+Unknown-card denials no longer block synchronization.
+
+Duplicate batches are handled safely.
+
+Events are not silently discarded.
+
+F. PERFORMANCE COMPARISON
+
+Compare the stabilized application with the
+October 12 audit findings where environments
+are reasonably comparable.
+
+Do not present non-comparable benchmarks as
+direct improvements.
+
+G. SECURITY IMPROVEMENTS
+
+Explain:
+
+Demo session handling
+Production simulation restrictions
+Server-side entitlement validation
+Authorization changes
+Remaining security risks
+
+H. DEPLOYMENT GUIDE
+
+Explain how to:
+
+Export the code
+Install dependencies
+Configure environment variables
+Run PostgreSQL
+Run migrations
+Build Docker images
+Start the application
+Run tests
+Check health
+Prepare VPS deployment
+
+I. UPDATED DOCUMENTATION
+
+Create or update:
+
+README.md
+
+STABILIZATION_REPORT.md
+
+TEST_REPORT.md
+
+DEPLOYMENT.md
+
+ARCHITECTURE.md
+
+Where appropriate, reuse existing documentation
+instead of creating unnecessary duplicates.
+
+J. REMAINING BACKLOG
+
+Classify remaining tasks as:
+
+P0 — Critical
+
+P1 — Required before management acceptance testing
+
+P2 — Required before production pilot
+
+P3 — Future improvements
+
+Provide practical effort estimates with appropriate
+uncertainty.
+
+
+==================================================
+13. STRICT NON-GOALS
+==================================================
+
+Do NOT:
+
+- Rebuild the application from scratch
+- Replace Next.js without justification
+- Replace FastAPI without justification
+- Replace PostgreSQL
+- Add Kubernetes
+- Implement a large microservice architecture
+- Add unrelated features
+- Redesign the entire website
+- Invent WAKA business policies
+- Introduce real payment processing without approval
+- Integrate real speedgates
+- Assume physical card compatibility
+- Use real Fitbase data
+- Send real SMS or WhatsApp messages
+- Introduce hidden demo authentication bypasses
+- Expose sensitive credentials
+- Delete existing membership data
+- Reset production databases
+- Run heavy tests against the public app
+- Publish or deploy automatically
+- Introduce Replit-specific production dependencies
+
+Prioritize quality over complexity.
+
+
+==================================================
+14. DEFINITION OF DONE
+==================================================
+
+The stabilization effort is complete when:
+
+1. Membership renewals no longer lose entitlement
+   duration under verified concurrent operations.
+
+2. Duplicate logical renewal requests are processed
+   idempotently.
+
+3. Simulated payments cannot activate production
+   memberships.
+
+4. Public users cannot manipulate membership
+   expiration dates.
+
+5. Disabling demo authentication invalidates
+   privileged demo access.
+
+6. Role-based permissions are enforced by the backend.
+
+7. Offline unknown-card events no longer break
+   synchronization.
+
+8. Duplicate offline event batches do not generate
+   duplicate check-ins.
+
+9. Revenue figures reconcile against database totals.
+
+10. Workspace/database connection handling is stable
+    under the verified representative test workload.
+
+11. Frontend error messages accurately reflect backend
+    results.
+
+12. Docker builds are reproducible on the supported
+    platforms, or remaining unverified platforms are
+    explicitly documented.
+
+13. Database migrations are versioned and tested.
+
+14. Application configuration is suitable for future
+    independent VPS deployment.
+
+15. Existing WAKA POC workflows continue functioning.
+
+16. The platform remains independent of Replit as a
+    production dependency.
+
+17. All remaining limitations are documented clearly.
+
+Do not mark the overall task COMPLETE if a critical
+acceptance criterion remains unverified or failing.
+
+Instead, report its status and the reason.
+
+
+==================================================
+15. FINAL OBJECTIVE
+==================================================
+
+We have already demonstrated that the WAKA platform
+concept is technically feasible.
+
+The purpose of this task is to improve the existing
+foundation until it becomes substantially more
+reliable, secure, maintainable, and portable.
+
+Focus particularly on the problems that could create:
+
+- Incorrect membership validity
+- Lost paid entitlement
+- Duplicate payments
+- Unauthorized access
+- Incorrect financial reporting
+- Failed offline synchronization
+- Backend instability
+- Deployment problems
+
+Do not prioritize appearance over correctness.
+
+Do not merely silence errors.
+
+Fix their underlying causes.
+
+Preserve the existing WAKA user experience and
+technical architecture wherever possible.
+
+The ultimate goal is a trustworthy foundation
+that can eventually support:
+
+One public website
+One membership management platform
+Three WAKA branches
+One gated branch with reliable offline access
+Two reception-based branches
+Self-service renewals
+Real payment providers
+Reliable automated notifications
+Self-hosted n8n
+Independent VPS deployment
+
+Work through the stabilization stages systematically.
+
+Begin by inspecting the repository, establishing
+the current test baseline, and identifying the
+implementation of membership renewals.
+
+Then proceed with Stage 1.

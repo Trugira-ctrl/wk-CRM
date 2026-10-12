@@ -1,13 +1,16 @@
 "use client";
 
-import { useGetWorkspace } from "@workspace/api-client-react";
+import { useGetPayments } from "@workspace/api-client-react";
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { format } from "date-fns";
 
 export default function PaymentsPage() {
-  const { data: workspace } = useGetWorkspace();
-
-  if (!workspace) return null;
+  const [page, setPage] = useState(1);
+  const { data, isError, isLoading, refetch } = useGetPayments({ page, page_size: 50 });
+  if (isLoading) return <p role="status">Loading payments…</p>;
+  if (isError || !data) return <div role="alert">Payments could not be loaded. <Button onClick={() => refetch()}>Retry</Button></div>;
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
@@ -29,10 +32,10 @@ export default function PaymentsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100">
-              {workspace.payments.length === 0 && (
+              {data.items.length === 0 && (
                 <tr><td colSpan={5} className="px-4 py-8 text-center text-zinc-500">No payments found</td></tr>
               )}
-              {workspace.payments.map((p) => (
+              {data.items.map((p) => (
                 <tr key={p.id}>
                   <td className="px-4 py-3 font-mono text-xs">{format(new Date(p.created_at), "dd MMM yyyy HH:mm")}</td>
                   <td className="px-4 py-3 font-medium">{p.member_name}</td>
@@ -49,6 +52,11 @@ export default function PaymentsPage() {
           </table>
         </div>
       </Card>
+      <div className="flex items-center gap-4">
+        <Button variant="outline" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>Previous</Button>
+        <span>Page {page} · {data.total} records</span>
+        <Button variant="outline" disabled={page * data.page_size >= data.total} onClick={() => setPage(p => p + 1)}>Next</Button>
+      </div>
     </div>
   );
 }

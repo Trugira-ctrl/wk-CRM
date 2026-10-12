@@ -6,6 +6,7 @@
  * OpenAPI spec version: 1.0.0
  */
 import type { AccessEvent } from './accessEvent';
+import type { ActionResultResultsItem } from './actionResultResultsItem';
 import type { Member } from './member';
 import type { MigrationRow } from './migrationRow';
 
@@ -18,5 +19,7 @@ export interface ActionResult {
   imported?: number;
   skipped?: number;
   synced?: number;
+  operation_id?: string;
+  results?: ActionResultResultsItem[];
   run_id?: string;
 }

@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import select
 from sqlalchemy.orm import Session as DBSession
 
-from .config import SESSION_DAYS
+from .config import SESSION_DAYS, DEMO_MODE, ENVIRONMENT
 from .models import Session, User
 
 
@@ -46,8 +46,15 @@ def session_user(db: DBSession, token: str | None) -> User | None:
     if not token:
         return None
     row = db.scalar(select(Session).where(Session.token_hash == token_digest(token)))
-    if not row or row.expires_at <= datetime.now(timezone.utc):
+    expiry = (row.expires_at.replace(tzinfo=timezone.utc) if row and row.expires_at.tzinfo is None
+              else row.expires_at if row else None)
+    if not row or expiry <= datetime.now(timezone.utc):
         if row:
             db.delete(row)
         return None
-    return row.user
+    user = row.user
+    if user.role not in {"ADMIN", "MANAGEMENT", "RECEPTION", "MEMBER"}:
+        return None
+    if user.is_demo_seed and (not DEMO_MODE or ENVIRONMENT == "production"):
+        return None
+    return user

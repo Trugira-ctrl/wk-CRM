@@ -256,6 +256,7 @@ export interface Workspace {
   metrics: Metrics;
   visit_trend: VisitTrend[];
   demo_generation: string;
+  demo_mode?: boolean;
 }
 
 export interface MigrationRow {
@@ -306,6 +307,12 @@ export interface ActionInput {
   identifier?: string;
   credential_type?: ActionInputCredentialType;
   plan_id?: number;
+  /**
+     * @minLength 16
+     * @maxLength 100
+     */
+  idempotency_key?: string;
+  simulate_failure?: boolean;
   branch_id?: number;
   method?: string;
   all_fail?: boolean;
@@ -318,6 +325,22 @@ export interface ActionInput {
   plan?: Plan;
 }
 
+export type ActionResultResultsItemStatus = typeof ActionResultResultsItemStatus[keyof typeof ActionResultResultsItemStatus];
+
+
+export const ActionResultResultsItemStatus = {
+  SYNCED: 'SYNCED',
+  DUPLICATE: 'DUPLICATE',
+  REJECTED: 'REJECTED',
+} as const;
+
+export type ActionResultResultsItem = {
+  /** @nullable */
+  id: string | null;
+  status: ActionResultResultsItemStatus;
+  detail?: string;
+};
+
 export interface ActionResult {
   ok: boolean;
   message: string;
@@ -327,6 +350,27 @@ export interface ActionResult {
   imported?: number;
   skipped?: number;
   synced?: number;
+  operation_id?: string;
+  results?: ActionResultResultsItem[];
   run_id?: string;
 }
+
+export type GetPaymentsParams = {
+/**
+ * @minimum 1
+ */
+page?: number;
+/**
+ * @minimum 1
+ * @maximum 200
+ */
+page_size?: number;
+};
+
+export type GetPayments200 = {
+  items: Payment[];
+  page: number;
+  page_size: number;
+  total: number;
+};
 

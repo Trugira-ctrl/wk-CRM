@@ -20,6 +20,12 @@ export interface ActionInput {
   identifier?: string;
   credential_type?: ActionInputCredentialType;
   plan_id?: number;
+  /**
+     * @minLength 16
+     * @maxLength 100
+     */
+  idempotency_key?: string;
+  simulate_failure?: boolean;
   branch_id?: number;
   method?: string;
   all_fail?: boolean;

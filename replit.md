@@ -8,7 +8,7 @@ The full user-facing specification is in README.md and docs/.
 - Frontend: Next.js in `artifacts/waka`, `pnpm --filter @workspace/waka run dev`.
 - Backend: FastAPI in `backend`; the API artifact's package script launches it.
 - Database: PostgreSQL via SQLAlchemy and `DATABASE_URL`.
-- `python -m backend.migrate` creates initial schema explicitly.
+- `python -m backend.migrate` applies versioned Alembic revisions explicitly.
 - `python -m backend.seed` seeds only empty data; `--reset` is destructive.
 - `pnpm --filter @workspace/api-spec run codegen` regenerates API hooks.
 - `pnpm --filter @workspace/waka run typecheck` checks frontend.
@@ -45,8 +45,8 @@ to work; the production login restriction is intentional. Keep that restriction
 for real deployments, and use only fictional data in the hosted demo.
 
 WAKA SQLAlchemy models own persistence. Do not run Drizzle schema push.
-Initial migration is explicit metadata creation, not a schema-upgrade engine;
-add Alembic revisions for future schema changes. Do not automatically reset
+Migrations use a frozen legacy baseline and additive Alembic revisions;
+add reviewed revisions for future schema changes. Do not automatically reset
 data after edits or on startup.
 
 ## Documentation

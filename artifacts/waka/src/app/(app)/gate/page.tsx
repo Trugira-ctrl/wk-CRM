@@ -29,6 +29,8 @@ export default function GateSimulatorPage() {
   const [gateStatus, setGateStatus] = useState<"IDLE" | "GRANTED" | "DENIED">("IDLE");
   const [gateMessage, setGateMessage] = useState<string>("");
   const [syncing, setSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState("");
+  const [storageFault, setStorageFault] = useState(false);
 
   // Initialize offline state from localStorage using generation barrier
   useEffect(() => {
@@ -42,11 +44,11 @@ export default function GateSimulatorPage() {
           setOfflineQueue(state.queue || []);
           setOfflineCache(state.cache || null);
         } catch (e) {
-          toast({ title: "Offline Storage Error", description: "Failed to parse local cache. Resetting.", variant: "destructive" });
+          setStorageFault(true);
+          toast({ title: "Offline Storage Error", description: "Saved data could not be read. It has been preserved for recovery; offline taps are disabled.", variant: "destructive" });
           setIsOffline(false);
           setOfflineQueue([]);
           setOfflineCache(null);
-          localStorage.removeItem(`waka_offline_state_${workspace.demo_generation}`);
         }
       } else {
         setIsOffline(false);
@@ -59,7 +61,7 @@ export default function GateSimulatorPage() {
 
   // Save to localStorage ONLY when explicitly changed within current generation
   useEffect(() => {
-    if (!workspace || hydrationGen !== workspace.demo_generation) return;
+    if (!workspace || hydrationGen !== workspace.demo_generation || storageFault) return;
     try {
       localStorage.setItem(`waka_offline_state_${workspace.demo_generation}`, JSON.stringify({
         isOffline,
@@ -69,7 +71,7 @@ export default function GateSimulatorPage() {
     } catch (e) {
       toast({ title: "Storage Error", description: "Could not save offline state.", variant: "destructive" });
     }
-  }, [isOffline, offlineQueue, offlineCache, workspace, hydrationGen, toast]);
+  }, [isOffline, offlineQueue, offlineCache, workspace, hydrationGen, storageFault, toast]);
 
   if (!workspace) return null;
 
@@ -103,6 +105,7 @@ export default function GateSimulatorPage() {
     } else {
       // Disconnect - freeze cache
       const cache = {
+        capturedAt: Date.now(),
         members: workspace.members.map(m => ({
           id: m.id,
           name: m.full_name,
@@ -135,8 +138,8 @@ export default function GateSimulatorPage() {
     setSyncing(true);
     
     // Capture the batch ID set
-    const batch = [...offlineQueue];
-    const batchIds = batch.map(e => e.id);
+    const batch = offlineQueue.slice(0, 200);
+    setSyncMessage("SYNC IN PROGRESS");
 
     runAction.mutate({
       data: {
@@ -145,13 +148,21 @@ export default function GateSimulatorPage() {
         events: batch
       }
     }, {
-      onSuccess: () => {
-        toast({ title: "SYNC COMPLETE", description: `Synchronized ${batch.length} offline access events.` });
-        setOfflineQueue(q => q.filter(e => !batchIds.includes(e.id)));
+      onSuccess: (result) => {
+        const rejected = new Set((result.results || []).filter(r => r.status === "REJECTED").map(r => r.id));
+        const acknowledged = new Set((result.results || [])
+          .filter(r => !rejected.has(r.id) && (r.status === "SYNCED" || r.status === "DUPLICATE")).map(r => r.id));
+        const complete = acknowledged.size === batch.length;
+        setSyncMessage(complete ? "SYNC COMPLETE — acknowledged batch" : "SYNC FAILED — unacknowledged events retained");
+        toast({ title: complete ? "SYNC COMPLETE" : "SYNC NEEDS REVIEW",
+          description: `${acknowledged.size} acknowledged; remaining events kept for retry.`,
+          variant: complete ? "default" : "destructive" });
+        setOfflineQueue(q => q.filter(e => !acknowledged.has(e.id)));
         setSyncing(false);
         refetch();
       },
       onError: (err: any) => {
+        setSyncMessage("SYNC FAILED — queue retained");
         toast({ title: "Sync Failed", description: err.message, variant: "destructive" });
         setSyncing(false);
       }
@@ -159,6 +170,10 @@ export default function GateSimulatorPage() {
   };
 
   const handleTap = () => {
+    if (storageFault) {
+      toast({ title: "Saved queue needs recovery", description: "Offline storage was preserved. Do not clear browser data.", variant: "destructive" });
+      return;
+    }
     if (syncing) {
       toast({ title: "Sync in progress", description: "Please wait.", variant: "destructive" });
       return;
@@ -188,6 +203,18 @@ export default function GateSimulatorPage() {
 
       const now = new Date();
       const eventId = crypto.randomUUID();
+      const age = now.getTime() - Number(offlineCache.capturedAt);
+      // POC policy: a maximum 24-hour frozen cache; a backward clock fails closed.
+      if (!Number.isFinite(age) || age < -120_000 || age > 24 * 60 * 60 * 1000) {
+        setOfflineQueue(q => [...q, {
+          id: eventId, branch_id: 1, member_id: foundMember?.id ?? null,
+          member_name: foundMember?.name ?? "Unknown", method: "SPEEDGATE_CARD",
+          decision: "DENIED", reason: "Local cache stale or clock invalid",
+          occurred_at: now.toISOString(), offline: true, sync_status: "PENDING",
+        }]);
+        setGateResult("DENIED", "ACCESS DENIED — CACHE STALE / CLOCK INVALID");
+        return;
+      }
       
       if (!foundMember || !foundCred) {
         const event = {
@@ -322,6 +349,14 @@ export default function GateSimulatorPage() {
         <div>
           <h1 className="text-3xl font-display font-bold uppercase tracking-tight">Gate Simulator</h1>
           <p className="text-zinc-500">Branch 1 (Gated Branch)</p>
+          <p className="text-xs text-zinc-500 mt-2" role="status">
+            {isOffline ? "CLOUD OFFLINE (SIMULATED)" : "CLOUD ONLINE (SIMULATED)"} ·{" "}
+            {!offlineCache ? "LOCAL CACHE NOT READY" :
+              !offlineCache.capturedAt || Date.now() - offlineCache.capturedAt > 86_400_000 ||
+              Date.now() < offlineCache.capturedAt - 120_000 ? "LOCAL CACHE STALE" : "LOCAL CACHE READY"}
+            {" · "}{offlineQueue.length} PENDING SYNCHRONIZATION
+            {syncMessage && ` · ${syncMessage}`}
+          </p>
         </div>
       </div>
 
@@ -394,7 +429,7 @@ export default function GateSimulatorPage() {
                   <SelectContent>
                     {allCards.map((c: any, i: number) => (
                       <SelectItem key={i} value={c.uid}>
-                        {c.uid} - {c.memberName} ({c.status})
+                        {c.uid} - {c.memberName} (Card: {c.status}; membership checked on tap)
                       </SelectItem>
                     ))}
                     <SelectItem value="04-XX-XX-XX-XX">Unknown Card (Test Deny)</SelectItem>

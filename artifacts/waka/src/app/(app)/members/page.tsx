@@ -276,11 +276,11 @@ export default function MembersPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <Link href={`/members/${member.id}`}>
-                      <Button variant="outline" size="sm" className="rounded-none text-xs font-semibold uppercase tracking-wider">
+                    <Button asChild variant="outline" size="sm" className="rounded-none text-xs font-semibold uppercase tracking-wider">
+                      <Link href={`/members/${member.id}`}>
                         View Profile
-                      </Button>
-                    </Link>
+                      </Link>
+                    </Button>
                   </td>
                 </tr>
               ))}

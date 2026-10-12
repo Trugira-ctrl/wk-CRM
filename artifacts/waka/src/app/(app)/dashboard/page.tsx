@@ -205,8 +205,6 @@ function ManagementDashboard({ ws, name }: { ws: Workspace; name?: string }) {
   const { metrics, branches, system_events } = ws;
   const nm = notificationMetrics(ws);
   const today = kigaliToday();
-  const todaysPayments = ws.payments.filter(p => p.created_at.slice(0, 10) === today);
-  const revenueToday = todaysPayments.reduce((s, p) => s + p.amount, 0);
   const deniedToday = ws.access_events.filter(e => !isAllowed(e.decision) && e.occurred_at.slice(0, 10) === today).length;
   const soon = addDays(today, 7);
   const expiring = ws.members.filter(m => !!m.end_date && m.end_date >= today && m.end_date <= soon).sort((a, b) => (a.end_date ?? "").localeCompare(b.end_date ?? "")).slice(0, 6);
@@ -224,7 +222,7 @@ function ManagementDashboard({ ws, name }: { ws: Workspace; name?: string }) {
         <StatCard title="Active members" value={metrics.active_members} icon={Users} description={`${metrics.expired_members} expired`} />
         <StatCard title="Check-ins today" value={metrics.checkins_today} icon={Activity} description={`${deniedToday} denied today`} />
         <StatCard title="Expiring in 7 days" value={metrics.expiring_week} icon={Clock} />
-        <StatCard title="Payments today" value={metrics.payments_today} icon={DollarSign} description={`RWF ${revenueToday.toLocaleString()} simulated`} />
+        <StatCard title={ws.demo_mode ? "Simulated payments today" : "Collected revenue today"} value={metrics.payments_today} icon={DollarSign} description="RWF · all matching successful records" />
         <StatCard title="Failed notification chains" value={nm.failedChains} icon={Bell} tone={nm.failedChains ? "red" : undefined} description="Runs ending in staff follow-up" />
         <StatCard title="Failed delivery attempts" value={nm.failedAttempts} icon={AlertTriangle} description="Individual simulated attempts" />
       </div>

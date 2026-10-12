@@ -1,10 +1,11 @@
 import csv
+import asyncio
 import io
 import uuid
 from datetime import timedelta
 from urllib.parse import urlparse
 
-from fastapi import Depends, FastAPI, HTTPException, Request, Response
+from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, PlainTextResponse
 from sqlalchemy import select, text
@@ -12,14 +13,33 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from .common import normalize_email, today
-from .config import COOKIE_SECURE, DEMO_MODE, ENVIRONMENT, SESSION_COOKIE
-from .db import SessionLocal
+from .config import ALLOWED_ORIGINS, COOKIE_SECURE, DEMO_MODE, ENVIRONMENT, SESSION_COOKIE
+from .db import SessionLocal, pool_options
 from .models import Branch, Plan, Session as LoginSession, User
 from .security import create_session, session_user, token_digest, verify_password
 from .serializers import branch_checkins_today, branch_json, member_json, plan_json, user_json, workspace
 from .services import create_member, get_member, run_action
+from .requests import JoinRequest, validated
+from .reporting import payment_page
 
 app = FastAPI(title="WAKA Phase 1 simulated operations API", version="1.0.0")
+# Queue before entering FastAPI's synchronous worker pool. Otherwise session
+# dependencies can hold every DB connection while endpoint workers wait for a
+# thread, and new auth dependencies occupy the remaining threads waiting for DB.
+db_admission = asyncio.Semaphore(max(1, min(12,
+    pool_options.get("pool_size", 5) + pool_options.get("max_overflow", 10))))
+
+
+@app.middleware("http")
+async def bounded_database_requests(request: Request, call_next):
+    try:
+        await asyncio.wait_for(db_admission.acquire(), timeout=20)
+    except asyncio.TimeoutError:
+        return JSONResponse({"error": "busy", "detail": "Service is busy; please retry shortly"}, status_code=503)
+    try:
+        return await call_next(request)
+    finally:
+        db_admission.release()
 
 
 def get_db():
@@ -31,6 +51,7 @@ def current_user(request: Request, db: Session = Depends(get_db)):
     user = session_user(db, request.cookies.get(SESSION_COOKIE))
     if not user:
         raise HTTPException(401, detail="Authentication required")
+    db.commit()  # release authentication's read transaction before endpoint work
     return user
 
 
@@ -43,6 +64,10 @@ def set_cookie(response: Response, token: str):
 async def validate_mutation_origin(request: Request, call_next):
     if request.method not in {"GET", "HEAD", "OPTIONS"}:
         origin = request.headers.get("origin")
+        if ENVIRONMENT == "production":
+            if origin not in ALLOWED_ORIGINS:
+                return JSONResponse({"error": "forbidden_origin", "detail": "An approved request origin is required"}, status_code=403)
+            return await call_next(request)
         if origin:
             origin_host = urlparse(origin).netloc.lower()
             allowed = {request.headers.get("host", "").lower()}
@@ -65,6 +90,12 @@ async def http_error(_request, exc):
 @app.exception_handler(IntegrityError)
 async def integrity_error(_request, _exc):
     return JSONResponse({"error": "conflict", "detail": "A unique or relational constraint was violated"}, status_code=409)
+
+
+@app.exception_handler(SQLAlchemyError)
+async def database_error(_request, _exc):
+    return JSONResponse({"error": "service_unavailable", "detail": "Service temporarily unavailable; please try again"},
+                        status_code=503)
 
 
 @app.exception_handler(RequestValidationError)
@@ -136,10 +167,14 @@ def public_data(db: Session = Depends(get_db)):
 
 @app.post("/api/join")
 def join(body: dict, response: Response, db: Session = Depends(get_db)):
+    body = validated(JoinRequest, body).model_dump()
     if not body.get("password"):
         raise HTTPException(400, detail="Password is required to create a member login")
     try:
         member, user = create_member(db, {**body, "record_payment": True}, record_default=True, create_login=True)
+        from .services import audit
+        db.info["actor_id"] = user.id
+        audit(db, "MEMBER_REGISTERED", f"Public registration: member_id={member.id}; simulated activation")
         token = create_session(db, user)
         db.commit()
     except Exception:
@@ -152,7 +187,16 @@ def join(body: dict, response: Response, db: Session = Depends(get_db)):
 
 @app.get("/api/workspace")
 def get_workspace(user: User = Depends(current_user), db: Session = Depends(get_db)):
-    return workspace(db, user)
+    try:
+        return workspace(db, user)
+    finally:
+        db.rollback()  # result is plain data; don't hold a connection during JSON encoding
+
+
+@app.get("/api/payments")
+def payments(page: int = Query(1, ge=1), page_size: int = Query(50, ge=1, le=200),
+             user: User = Depends(current_user), db: Session = Depends(get_db)):
+    return payment_page(db, user, page, page_size)
 
 
 @app.post("/api/actions")

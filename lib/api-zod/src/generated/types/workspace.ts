@@ -32,4 +32,5 @@ export interface Workspace {
   metrics: Metrics;
   visit_trend: VisitTrend[];
   demo_generation: string;
+  demo_mode?: boolean;
 }

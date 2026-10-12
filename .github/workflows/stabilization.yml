@@ -1,0 +1,55 @@
+name: WAKA verification
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  tests:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: corepack enable && corepack prepare pnpm@10.26.1 --activate
+      - run: pnpm install --frozen-lockfile
+      - run: pip install -r backend/requirements.txt
+      - name: Backend regressions (isolated SQLite)
+        run: DATABASE_URL=sqlite:// DEMO_MODE=true ENVIRONMENT=test python -m unittest backend.test_regressions backend.test_stabilization.StabilizationTests -v
+      - name: Disposable PostgreSQL migrations, concurrency and workload
+        run: |
+          sudo apt-get update && sudo apt-get install -y postgresql
+          export PATH="$(pg_config --bindir):$PATH"
+          python scripts/isolated_postgres.py
+      - run: pnpm --filter @workspace/api-spec run codegen
+      - run: pnpm --filter @workspace/waka run typecheck
+      - run: pnpm --filter @workspace/waka run build
+  images:
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        platform: [linux/amd64, linux/arm64]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - name: Validate Compose
+        run: POSTGRES_PASSWORD=ci-fictional-only docker compose config --quiet
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.frontend
+          platforms: ${{ matrix.platform }}
+          push: false
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: backend/Dockerfile
+          platforms: ${{ matrix.platform }}
+          push: false
+      # Intentionally no publishing, SSH, cloud credentials or deployment step.

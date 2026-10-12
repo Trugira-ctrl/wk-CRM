@@ -93,6 +93,31 @@ paths:
           content:
             application/json:
               schema: {$ref: "#/components/schemas/ActionResult"}
+  /payments:
+    get:
+      operationId: getPayments
+      parameters:
+        - in: query
+          name: page
+          schema: {type: integer, minimum: 1, default: 1}
+        - in: query
+          name: page_size
+          schema: {type: integer, minimum: 1, maximum: 200, default: 50}
+      responses:
+        "200":
+          description: Role-scoped payment history
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, page, page_size, total]
+                properties:
+                  items:
+                    type: array
+                    items: {$ref: "#/components/schemas/Payment"}
+                  page: {type: integer}
+                  page_size: {type: integer}
+                  total: {type: integer}
 components:
   schemas:
     HealthStatus:
@@ -332,6 +357,7 @@ components:
           type: array
           items: {$ref: "#/components/schemas/VisitTrend"}
         demo_generation: {type: string}
+        demo_mode: {type: boolean}
     MigrationRow:
       type: object
       required: [source_record_id, full_name, email, phone, plan, start_date, end_date, branch_id, issues]
@@ -359,6 +385,8 @@ components:
         identifier: {type: string}
         credential_type: {type: string, enum: [CARD, QR]}
         plan_id: {type: integer}
+        idempotency_key: {type: string, minLength: 16, maxLength: 100}
+        simulate_failure: {type: boolean}
         branch_id: {type: integer}
         method: {type: string}
         all_fail: {type: boolean}
@@ -387,4 +415,14 @@ components:
         imported: {type: integer}
         skipped: {type: integer}
         synced: {type: integer}
+        operation_id: {type: string}
+        results:
+          type: array
+          items:
+            type: object
+            required: [id, status]
+            properties:
+              id: {type: [string, "null"]}
+              status: {type: string, enum: [SYNCED, DUPLICATE, REJECTED]}
+              detail: {type: string}
         run_id: {type: string}
