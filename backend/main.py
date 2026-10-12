@@ -16,7 +16,7 @@ from .config import COOKIE_SECURE, DEMO_MODE, ENVIRONMENT, SESSION_COOKIE
 from .db import SessionLocal
 from .models import Branch, Plan, Session as LoginSession, User
 from .security import create_session, session_user, token_digest, verify_password
-from .serializers import branch_json, member_json, plan_json, user_json, workspace
+from .serializers import branch_checkins_today, branch_json, member_json, plan_json, user_json, workspace
 from .services import create_member, get_member, run_action
 
 app = FastAPI(title="WAKA Phase 1 simulated operations API", version="1.0.0")
@@ -130,7 +130,8 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db)):
 def public_data(db: Session = Depends(get_db)):
     plans = db.scalars(select(Plan).order_by(Plan.id)).all()
     branches = db.scalars(select(Branch).order_by(Branch.id)).all()
-    return {"plans": [plan_json(p) for p in plans], "branches": [branch_json(db, b) for b in branches]}
+    counts = branch_checkins_today(db)
+    return {"plans": [plan_json(p) for p in plans], "branches": [branch_json(db, b, counts) for b in branches]}
 
 
 @app.post("/api/join")

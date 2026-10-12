@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { LogOut, Home, Users, CheckSquare, Shield, Bell, HardDrive, CreditCard, Settings, UserCircle, Menu, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
+import { WakaWordmark } from "@/components/brand/wordmark";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -148,7 +149,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Mobile Header */}
       <div className="md:hidden bg-zinc-900 text-zinc-300 flex items-center justify-between p-4 flex-shrink-0">
         <Link href={isStaff ? "/dashboard" : "/portal"}>
-          <h1 className="text-xl font-display font-bold text-white tracking-tighter uppercase">WAKA</h1>
+          <WakaWordmark className="text-2xl text-white" />
         </Link>
         <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="p-1">
           {mobileMenuOpen ? <X className="w-6 h-6 text-white" /> : <Menu className="w-6 h-6 text-white" />}
@@ -182,7 +183,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <aside className="hidden md:flex w-64 bg-zinc-900 text-zinc-300 flex-col flex-shrink-0">
         <div className="p-6">
           <Link href={isStaff ? "/dashboard" : "/portal"}>
-            <h1 className="text-2xl font-display font-bold text-white tracking-tighter uppercase">WAKA</h1>
+            <WakaWordmark className="text-3xl text-white" />
           </Link>
           <div className="mt-2 text-xs font-mono text-zinc-500">{session.user.name} ({role})</div>
           {session.demo_mode && (

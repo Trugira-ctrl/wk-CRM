@@ -11,14 +11,14 @@ export function formatRwf(n: number) {
 
 export function PublicPlans() {
   const { data, isLoading, isError, refetch } = useGetPublic({
-    query: { queryKey: getGetPublicQueryKey(), refetchInterval: 15000, refetchOnWindowFocus: true, refetchOnMount: "always", staleTime: 0 },
+    query: { queryKey: getGetPublicQueryKey(), refetchInterval: 60000, refetchOnWindowFocus: true, staleTime: 15000 },
   });
   const plans = data?.plans ?? [];
 
   return (
-    <section id="memberships" className="py-24 bg-zinc-950 text-white">
+    <section id="memberships" className="py-28 bg-[hsl(var(--waka-ink))] text-white">
       <div className="container mx-auto px-4">
-        <h2 className="text-3xl font-display font-bold uppercase tracking-tight text-center mb-4">Membership Plans</h2>
+        <h2 data-reveal className="waka-display text-6xl md:text-8xl text-center mb-6">Membership <span className="waka-steel">Plans</span></h2>
         <p className="text-zinc-400 text-center mb-3 max-w-xl mx-auto">Plan details below are the same records used by Join and the admin console.</p>
         <p className="text-center mb-16">
           <span className="inline-block border border-amber-400/60 text-amber-300 text-[10px] font-bold uppercase tracking-widest px-3 py-1">
@@ -28,7 +28,7 @@ export function PublicPlans() {
 
         {isLoading && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            {[0, 1, 2].map((i) => <div key={i} className="h-72 border border-zinc-800 bg-zinc-900 animate-pulse" />)}
+            {[0, 1, 2].map((i) => <div key={i} className="h-72 border border-zinc-800 bg-[hsl(var(--waka-charcoal))] animate-pulse" />)}
           </div>
         )}
         {isError && (
@@ -43,20 +43,20 @@ export function PublicPlans() {
 
         {plans.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            {plans.map((plan) => (
-              <div key={plan.id} className="border border-zinc-800 bg-zinc-950 hover:border-zinc-500 transition-colors p-8 relative flex flex-col">
-                <div className="text-sm text-zinc-400 uppercase tracking-widest font-bold mb-4">{plan.name}</div>
-                <div className="text-3xl font-display font-bold mb-1">{plan.price.toLocaleString("en-US")} <span className="text-sm font-sans text-zinc-500 font-normal">RWF</span></div>
+            {plans.map((plan, i) => (
+              <div key={plan.id} data-reveal style={{ ["--d" as string]: i }} className="waka-card border border-white/10 border-t-4 border-t-[hsl(var(--waka-steel))] bg-[hsl(var(--waka-charcoal))] hover:border-white/30 p-8 relative flex flex-col">
+                <div className="waka-display text-3xl waka-steel mb-4">{plan.name}</div>
+                <div className="waka-display text-6xl mb-2">{plan.price.toLocaleString("en-US")} <span className="text-sm not-italic font-sans text-zinc-500 font-normal">RWF</span></div>
                 <div className="text-[10px] text-amber-300 uppercase tracking-widest font-bold mb-2">Illustrative demo price</div>
                 <div className="text-xs text-zinc-500 mb-4">{plan.duration_days} days</div>
                 <p className="text-sm text-zinc-400 mb-8">{plan.description}</p>
                 <ul className="space-y-3 mb-8 flex-1">
-                  <li className="flex items-center text-sm text-zinc-300"><CheckCircle2 className="w-4 h-4 mr-3 text-white" /> Gym access at your chosen branch</li>
-                  <li className="flex items-center text-sm text-zinc-300"><CheckCircle2 className="w-4 h-4 mr-3 text-white" /> Member portal</li>
-                  <li className="flex items-center text-sm text-zinc-300"><CheckCircle2 className="w-4 h-4 mr-3 text-white" /> Simulated online payment</li>
+                  <li className="flex items-center text-sm text-zinc-300"><CheckCircle2 className="w-4 h-4 mr-3 text-[hsl(var(--waka-steel))]" /> Gym access at your chosen branch</li>
+                  <li className="flex items-center text-sm text-zinc-300"><CheckCircle2 className="w-4 h-4 mr-3 text-[hsl(var(--waka-steel))]" /> Member portal</li>
+                  <li className="flex items-center text-sm text-zinc-300"><CheckCircle2 className="w-4 h-4 mr-3 text-[hsl(var(--waka-steel))]" /> Simulated online payment</li>
                 </ul>
                 <Link href={`/join?plan=${plan.id}`}>
-                  <Button className="w-full rounded-none font-bold uppercase tracking-widest h-12 bg-white text-black hover:bg-zinc-200">
+                  <Button className="w-full rounded-none font-bold uppercase tracking-widest h-12 bg-white text-black hover:bg-[hsl(var(--waka-steel))]">
                     Select {plan.name}
                   </Button>
                 </Link>

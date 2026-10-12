@@ -17,11 +17,43 @@ from .db import Base
 from .main import join, sample_export
 from .models import (AccessEvent, Branch, Config, Credential, Member, Membership,
                      MigrationRecord, NotificationEvent, Payment, Plan, User)
-from .serializers import event_json, notification_runs, workspace
+from .serializers import branch_checkins_today, day_start, event_json, notification_runs, workspace
 from .services import create_member, get_member, run_action
 
 
 class RegressionTests(unittest.TestCase):
+    def test_aggregated_visits_keep_kigali_boundaries_scope_and_full_counts(self):
+        start = day_start(today())
+        # More than the displayed 200-row log: counts must not inherit its limit.
+        events = [
+            AccessEvent(id=str(uuid.uuid4()), member_id=self.member.id,
+                        member_name="Fictional Member", branch_id=2,
+                        method="MANUAL_RECEPTION", decision="ALLOWED",
+                        reason="Membership valid", occurred_at=start + timedelta(minutes=i),
+                        offline=False, sync_status="SYNCED")
+            for i in range(205)
+        ]
+        for at, decision in [(start - timedelta(seconds=1), "ALLOWED"),
+                             (start, "DENIED"), (start, "MANUAL_OVERRIDE")]:
+            events.append(AccessEvent(id=str(uuid.uuid4()), member_id=None,
+                member_name="Other", branch_id=3, method="MANUAL_RECEPTION",
+                decision=decision, reason="Test", occurred_at=at,
+                offline=False, sync_status="SYNCED"))
+        self.db.add_all(events)
+        self.db.commit()
+        self.assertEqual(branch_checkins_today(self.db), {2: 205, 3: 1})
+        staff = workspace(self.db, self.admin)
+        self.assertEqual(len(staff["access_events"]), 200)
+        self.assertEqual(staff["metrics"]["checkins_today"], 206)
+        self.assertEqual(staff["visit_trend"][-2]["branch3"], 1)
+        member_user = User(name="Member", email="scoped@example.test", role="MEMBER",
+                           member_id=self.member.id, password_hash="unused", created_at=now())
+        self.db.add(member_user)
+        self.db.commit()
+        own = workspace(self.db, member_user)
+        self.assertEqual(own["metrics"]["checkins_today"], 205)
+        self.assertTrue(all(day["branch3"] == 0 for day in own["visit_trend"]))
+
     def setUp(self):
         self.engine = create_engine("sqlite://")
         Base.metadata.create_all(self.engine)

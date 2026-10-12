@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useQueryClient } from "@tanstack/react-query";
+import { WakaWordmark } from "@/components/brand/wordmark";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -59,7 +60,7 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-950 p-4">
       <div className="w-full max-w-md bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-8 shadow-sm">
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-display font-bold tracking-tighter uppercase">WAKA</h1>
+          <h1><WakaWordmark className="text-5xl" /></h1>
           <p className="text-sm text-zinc-500 mt-2 uppercase tracking-widest font-semibold">Management Platform</p>
         </div>
 

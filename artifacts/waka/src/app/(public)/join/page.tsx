@@ -47,7 +47,7 @@ function JoinInner() {
   const searchParams = useSearchParams();
   const planParam = searchParams.get("plan");
   const { data: workspace, isLoading, isError, refetch } = useGetPublic({
-    query: { queryKey: getGetPublicQueryKey(), refetchInterval: 15000, refetchOnWindowFocus: true, refetchOnMount: "always", staleTime: 0 },
+    query: { queryKey: getGetPublicQueryKey(), refetchInterval: 60000, refetchOnWindowFocus: true, staleTime: 15000 },
   });
   const join = useJoin();
   const { toast } = useToast();

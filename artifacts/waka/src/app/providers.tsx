@@ -9,7 +9,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => new QueryClient({
     defaultOptions: {
       queries: {
-        refetchOnWindowFocus: false,
+        // Reuse the shared snapshot across navigation; refresh in the background.
+        // Gate overrides polling while offline, and mutations explicitly refetch.
+        staleTime: 15_000,
+        refetchInterval: 30_000,
+        refetchOnWindowFocus: true,
         retry: 1,
       },
     },
