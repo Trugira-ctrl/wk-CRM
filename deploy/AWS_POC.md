@@ -1,6 +1,6 @@
 # AWS live POC
 
-The WAKA demonstration runs at **http://44.210.143.148**, on an Amazon Linux 2023 EC2 instance with 8 GB RAM /2 CPUs. It runs Next.js, FastAPI, PostgreSQL and Nginx through Docker Compose. This deployment uses fictional demo accounts and simulated providers.
+The WAKA demonstration runs at **https://44.210.143.148**, on an Amazon Linux 2023 EC2 instance with 8 GB RAM /2 CPUs. It runs Next.js, FastAPI, PostgreSQL, Nginx and a Caddy HTTPS gateway through Docker Compose. This deployment uses fictional demo accounts and simulated providers.
 
 ## Daily workflow
 
@@ -26,15 +26,17 @@ Git hooks cannot undo a completed merge or reliably make its success mean deploy
 Install Docker, Git, Docker Compose plugin and Buildx on Amazon Linux. Docker Compose 5.6.0 and Buildx 0.38.0 were installed for this instance. Clone the repository into `/home/ec2-user/wk-CRM`. Create a private `.env` (0600) with a new random URL-safe database password and these demo settings:
 
 ```dotenv
-HTTP_PORT=80
+HTTP_PORT=127.0.0.1:80
 DEMO_MODE=true
 ENVIRONMENT=demo
-COOKIE_SECURE=false
-FRONTEND_URL=http://44.210.143.148
-ALLOWED_ORIGINS=http://44.210.143.148
+COOKIE_SECURE=true
+FRONTEND_URL=https://44.210.143.148
+ALLOWED_ORIGINS=https://44.210.143.148
 DB_POOL_SIZE=5
 DB_MAX_OVERFLOW=10
 DB_POOL_TIMEOUT=10
+PUBLIC_HOST=44.210.143.148
+COMPOSE_FILE=docker-compose.yml:deploy/compose.https.yml
 ```
 
 Set `POSTGRES_PASSWORD` privately; never paste or commit its value. Then install automation **on the server only**:
@@ -62,8 +64,10 @@ Backups are PostgreSQL custom-format dumps under `/home/ec2-user/.local/state/wa
 
 Build failure leaves the existing application containers running. A migration/startup failure requires checking logs and explicitly retrying or recovering; there is no automatic schema rollback. Never run `docker compose down -v`, `docker volume prune`, or `backend.seed --reset` on the persistent dataset during updates. Changing the environment password does not rotate an existing database password.
 
-Only the Nginx HTTP port 80 is published. PostgreSQL and backend ports remain private to the Docker network. Public HTTP also requires the EC2 security group to permit inbound TCP 80. This POC currently uses an IP and HTTP; a domain/TLS configuration can be added separately. An EC2 public IP may change after stop/start unless an Elastic IP is assigned.
+Public HTTPS uses the existing EC2 inbound TCP 443 rule. The HTTP proxy is bound to loopback only; PostgreSQL and backend ports remain private to the Docker network. Caddy obtains a publicly trusted Let’s Encrypt IP certificate using the shortlived profile and TLS-ALPN challenge on 443, then renews it automatically. Certificate state persists in the caddy-data volume. No AWS firewall rule change is required. Use HTTPS explicitly because public HTTP 80 is blocked by this instance’s security group. An EC2 public IP may change after stop/start unless an Elastic IP is assigned.
 
 GitHub reads use the public HTTPS clone URL. The development workstation's push URL uses the existing Trugira SSH identity; private keys are not copied to the instance. Pushes update GitHub only; a server pull or `waka-deploy` applies them to the POC.
 
 Installer/hook semantics follow the [Docker Compose installation guide](https://docs.docker.com/compose/install/linux/) and [Git hook documentation](https://git-scm.com/docs/githooks#_post_merge).
+
+HTTPS configuration follows [Caddy’s ACME profile documentation](https://caddyserver.com/docs/caddyfile/directives/tls) and [Let’s Encrypt IP certificate availability](https://letsencrypt.org/2026/01/15/6day-and-ip-general-availability).

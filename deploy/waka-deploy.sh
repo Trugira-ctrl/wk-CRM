@@ -38,6 +38,12 @@ if [ ! -f "$state_dir/initialized" ]; then
 fi
 curl --fail --silent --show-error --max-time 20 http://127.0.0.1/health/db >/dev/null
 curl --fail --silent --show-error --max-time 20 http://127.0.0.1/website >/dev/null
+# With HTTPS enabled, verify the public certificate through the local gateway too.
+if docker compose config --services | grep -qx https; then
+  public_host="$(docker compose exec -T https printenv PUBLIC_HOST)"
+  curl --fail --silent --show-error --max-time 10 --retry 20 --retry-all-errors --retry-delay 2 \
+    --resolve "$public_host:443:127.0.0.1" "https://$public_host/health/db" >/dev/null
+fi
 printf '%s\n' "$revision" > "$state_dir/deployed-revision"
 printf '%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$state_dir/deployed-at"
 # Limit disposable build cache on the small root disk; database volumes are never pruned.

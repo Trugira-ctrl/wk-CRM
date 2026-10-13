@@ -1,0 +1,23 @@
+# Opt in using COMPOSE_FILE=docker-compose.yml:deploy/compose.https.yml in .env.
+services:
+  https:
+    image: caddy:2
+    environment:
+      PUBLIC_HOST: ${PUBLIC_HOST:?Set PUBLIC_HOST to the public POC IP or hostname}
+    ports:
+      - "443:443"
+    volumes:
+      - ./deploy/Caddyfile.poc:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - proxy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:2019/config/"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+volumes:
+  caddy-data:
+  caddy-config:
