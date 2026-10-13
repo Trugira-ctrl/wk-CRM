@@ -151,6 +151,10 @@ The in-app reset requires ADMIN, demo mode and explicit `RESET` confirmation.
 It also changes the demo generation so old offline batches cannot be replayed
 against newly seeded records. Do not mix this dataset with real member data.
 
+## Live AWS POC updates
+
+See [deploy/AWS_POC.md](deploy/AWS_POC.md) for the live demonstration, server pull hook, persistent database backups and update commands.
+
 ## Standalone Docker POC
 
 Docker files target an ordinary Linux workstation/VPS. Docker is not required
