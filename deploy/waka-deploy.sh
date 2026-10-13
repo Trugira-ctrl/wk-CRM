@@ -40,6 +40,7 @@ curl --fail --silent --show-error --max-time 20 http://127.0.0.1/health/db >/dev
 curl --fail --silent --show-error --max-time 20 http://127.0.0.1/website >/dev/null
 # With HTTPS enabled, verify the public certificate through the local gateway too.
 if docker compose config --services | grep -qx https; then
+  docker compose exec -T https caddy reload --config /etc/caddy/Caddyfile
   public_host="$(docker compose exec -T https printenv PUBLIC_HOST)"
   curl --fail --silent --show-error --max-time 10 --retry 20 --retry-all-errors --retry-delay 2 \
     --resolve "$public_host:443:127.0.0.1" "https://$public_host/health/db" >/dev/null
