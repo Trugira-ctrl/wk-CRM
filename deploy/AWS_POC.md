@@ -60,7 +60,7 @@ git rev-parse HEAD
 tail -80 /home/ec2-user/.local/state/waka/deploy.log
 ```
 
-Backups are PostgreSQL custom-format dumps under `/home/ec2-user/.local/state/waka/backups`, private 0600 files. They contain authentication hashes and stay outside Git. Backups are local to this instance, not an off-host disaster-recovery service. Build cache is capped after healthy deployments and dangling images removed; database volumes are never pruned. Backup retention remains manual.
+Backups are PostgreSQL custom-format dumps under `/home/ec2-user/.local/state/waka/backups`, private 0600 files. They contain authentication hashes and stay outside Git. Backups are local to this instance, not an off-host disaster-recovery service. Reclaimable build cache and dangling images are removed after healthy deployments; database volumes are never pruned. The next build may take longer without that cache. Backup retention remains manual.
 
 Build failure leaves the existing application containers running. A migration/startup failure requires checking logs and explicitly retrying or recovering; there is no automatic schema rollback. Never run `docker compose down -v`, `docker volume prune`, or `backend.seed --reset` on the persistent dataset during updates. Changing the environment password does not rotate an existing database password.
 

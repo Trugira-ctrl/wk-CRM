@@ -54,7 +54,7 @@ fi
 printf '%s\n' "$revision" > "$state_dir/deployed-revision"
 printf '%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$state_dir/deployed-at"
 # Limit disposable build cache on the small root disk; database volumes are never pruned.
-docker buildx prune --force --max-used-space 1GB --reserved-space 256MB >/dev/null
+docker buildx prune --force >/dev/null
 docker image prune --force >/dev/null
 docker compose ps
 echo "WAKA deployment healthy: $revision"
