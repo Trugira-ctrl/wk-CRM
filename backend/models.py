@@ -81,6 +81,7 @@ class Credential(Base):
 
 class Payment(Base):
     __tablename__ = "waka_payments"
+    __table_args__ = (Index("ix_waka_payments_reporting", "created_at", "status", "provider"),)
     id: Mapped[int] = mapped_column(primary_key=True)
     member_id: Mapped[int] = mapped_column(ForeignKey("waka_members.id", ondelete="CASCADE"), index=True)
     amount: Mapped[int] = mapped_column(Numeric(12, 0))
@@ -91,8 +92,24 @@ class Payment(Base):
     member: Mapped[Member] = relationship()
 
 
+class RenewalOperation(Base):
+    __tablename__ = "waka_renewal_operations"
+    __table_args__ = (UniqueConstraint("member_id", "idempotency_key"),)
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    member_id: Mapped[int] = mapped_column(ForeignKey("waka_members.id", ondelete="CASCADE"))
+    actor_id: Mapped[int] = mapped_column(ForeignKey("waka_users.id"))
+    idempotency_key: Mapped[str] = mapped_column(String(100))
+    fingerprint: Mapped[str] = mapped_column(Text)
+    payment_id: Mapped[int] = mapped_column(ForeignKey("waka_payments.id", ondelete="CASCADE"), unique=True)
+    membership_id: Mapped[int | None] = mapped_column(ForeignKey("waka_memberships.id", ondelete="CASCADE"), unique=True)
+    status: Mapped[str] = mapped_column(String(20))
+    result: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
 class AccessEvent(Base):
     __tablename__ = "waka_access_events"
+    __table_args__ = (Index("ix_waka_access_branch_time", "branch_id", "occurred_at"),)
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     member_id: Mapped[int | None] = mapped_column(ForeignKey("waka_members.id", ondelete="SET NULL"), index=True)
     member_name: Mapped[str] = mapped_column(String(160), default="Unknown")

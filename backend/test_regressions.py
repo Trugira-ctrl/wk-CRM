@@ -82,6 +82,8 @@ class RegressionTests(unittest.TestCase):
                     branch_id=2, plan_id=1, notes="Demo notes", emergency_contact="Fictional contact")
 
     def action(self, action, **body):
+        if action == "renew_membership":
+            body.setdefault("idempotency_key", str(uuid.uuid4()))
         return run_action(self.db, self.admin, {"action": action, **body})
 
     def check(self, branch, method, **kw):

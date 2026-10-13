@@ -96,6 +96,12 @@ export const LogoutResponse = zod.object({
   "imported": zod.number().int().optional(),
   "skipped": zod.number().int().optional(),
   "synced": zod.number().int().optional(),
+  "operation_id": zod.string().optional(),
+  "results": zod.array(zod.object({
+  "id": zod.string().nullable(),
+  "status": zod.enum(['SYNCED', 'DUPLICATE', 'REJECTED']),
+  "detail": zod.string().optional()
+})).optional(),
   "run_id": zod.string().optional()
 })
 
@@ -190,6 +196,12 @@ export const JoinResponse = zod.object({
   "imported": zod.number().int().optional(),
   "skipped": zod.number().int().optional(),
   "synced": zod.number().int().optional(),
+  "operation_id": zod.string().optional(),
+  "results": zod.array(zod.object({
+  "id": zod.string().nullable(),
+  "status": zod.enum(['SYNCED', 'DUPLICATE', 'REJECTED']),
+  "detail": zod.string().optional()
+})).optional(),
   "run_id": zod.string().optional()
 })
 
@@ -327,8 +339,14 @@ export const GetWorkspaceResponse = zod.object({
   "branch2": zod.number().int(),
   "branch3": zod.number().int()
 })),
-  "demo_generation": zod.string()
+  "demo_generation": zod.string(),
+  "demo_mode": zod.boolean().optional()
 })
+
+
+export const runActionBodyIdempotencyKeyMin = 16;
+export const runActionBodyIdempotencyKeyMax = 100;
+
 
 
 export const RunActionBody = zod.object({
@@ -353,6 +371,8 @@ export const RunActionBody = zod.object({
   "identifier": zod.string().optional(),
   "credential_type": zod.enum(['CARD', 'QR']).optional(),
   "plan_id": zod.number().int().optional(),
+  "idempotency_key": zod.string().min(runActionBodyIdempotencyKeyMin).max(runActionBodyIdempotencyKeyMax).optional(),
+  "simulate_failure": zod.boolean().optional(),
   "branch_id": zod.number().int().optional(),
   "method": zod.string().optional(),
   "all_fail": zod.boolean().optional(),
@@ -447,7 +467,42 @@ export const RunActionResponse = zod.object({
   "imported": zod.number().int().optional(),
   "skipped": zod.number().int().optional(),
   "synced": zod.number().int().optional(),
+  "operation_id": zod.string().optional(),
+  "results": zod.array(zod.object({
+  "id": zod.string().nullable(),
+  "status": zod.enum(['SYNCED', 'DUPLICATE', 'REJECTED']),
+  "detail": zod.string().optional()
+})).optional(),
   "run_id": zod.string().optional()
+})
+
+
+export const getPaymentsQueryPageDefault = 1;
+
+export const getPaymentsQueryPageSizeDefault = 50;
+export const getPaymentsQueryPageSizeMax = 200;
+
+
+
+export const GetPaymentsQueryParams = zod.object({
+  "page": zod.coerce.number().int().min(1).default(getPaymentsQueryPageDefault),
+  "page_size": zod.coerce.number().int().min(1).max(getPaymentsQueryPageSizeMax).default(getPaymentsQueryPageSizeDefault)
+})
+
+export const GetPaymentsResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.number().int(),
+  "member_id": zod.number().int(),
+  "member_name": zod.string(),
+  "amount": zod.number(),
+  "currency": zod.string(),
+  "provider": zod.string(),
+  "status": zod.string(),
+  "created_at": zod.string()
+})),
+  "page": zod.number().int(),
+  "page_size": zod.number().int(),
+  "total": zod.number().int()
 })
 
 

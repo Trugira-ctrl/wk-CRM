@@ -8,12 +8,13 @@ python -m backend.migrate
 python -m backend.seed
 ```
 
-`migrate` creates the initial POC schema explicitly and idempotently.
+`migrate` applies versioned Alembic migrations explicitly and idempotently.
 `seed` does not overwrite existing WAKA data. The `--reset` option is
 destructive and for fictional demo databases only.
 
-This initial migration does not alter existing columns. Future schema
-changes must use reviewed Alembic revisions, with backups and rollback plans.
+The legacy baseline adopts existing tables without data rewrites. Subsequent
+revisions add purchase identity storage and reporting indexes. Future schema
+changes must use reviewed Alembic revisions, with backups and recovery plans.
 Do not rely on normal API startup to apply schema changes.
 
 Download the fresh sample CSV from the authenticated ADMIN migration page

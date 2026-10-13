@@ -5,6 +5,7 @@ from sqlalchemy import and_, case, func, select
 from sqlalchemy.orm import Session, joinedload, selectinload
 
 from .common import KIGALI, iso, today
+from .config import DEMO_MODE, ENVIRONMENT
 from .models import (AccessEvent, Branch, Config, Credential, Member, Membership,
                      MigrationRecord, NotificationEvent, Payment, Plan, SystemEvent, User)
 
@@ -179,6 +180,16 @@ def workspace(db: Session, user: User):
     branch_counts = (branch_checkins_today(db) if user.role == "MEMBER" else
                      {branch: trend[-1][f"branch{branch}"] for branch in (1, 2, 3)})
     active = [current_membership(m) for m in all_members if effective_status(current_membership(m)) == "ACTIVE"]
+    revenue_query = select(func.coalesce(func.sum(Payment.amount), 0)).where(
+        Payment.status == "SUCCESS", Payment.currency == "RWF",
+        Payment.created_at >= day_start(day),
+        Payment.created_at < day_start(day + timedelta(days=1)))
+    demo = DEMO_MODE and ENVIRONMENT != "production"
+    # With no real provider yet, production totals must be zero, never inferred
+    # from arbitrary provider strings or historical simulator rows.
+    revenue_query = revenue_query.where(Payment.provider == "SIMULATED" if demo else False)
+    if user.role == "MEMBER":
+        revenue_query = revenue_query.where(Payment.member_id == user.member_id)
     metrics = {
         "active_members": len(active), "expiring_week": sum(day <= m.end_date <= day + timedelta(days=7) for m in active),
         "expired_members": statuses.count("EXPIRED"),
@@ -186,7 +197,7 @@ def workspace(db: Session, user: User):
         "failed_notifications": failed_attempts, "notification_failures": failed_attempts,
         "failed_notification_attempts": failed_attempts, "failed_notification_chains": failed_chains,
         "followup_count": failed_chains,
-        "payments_today": sum(int(p.amount) for p in payments if p.created_at.astimezone(KIGALI).date() == day),
+        "payments_today": int(db.scalar(revenue_query)),
         "followups": failed_chains,
     }
     system = [] if user.role == "MEMBER" else [{"id": x.id, "type": x.type, "message": x.message, "created_at": iso(x.created_at)}
@@ -201,4 +212,4 @@ def workspace(db: Session, user: User):
             "access_events": [event_json(e) for e in events], "payments": [payment_json(p) for p in payments],
             "notifications": [n for r in runs for n in r["attempts"]], "notification_runs": runs, "system_events": system,
             "migrations": migrations, "metrics": metrics, "visit_trend": trend,
-            "demo_generation": generation.value if generation else ""}
+            "demo_generation": generation.value if generation else "", "demo_mode": demo}

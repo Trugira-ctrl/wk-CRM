@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from .common import now, today
 from .models import (AccessEvent, Branch, Config, Credential, Member, Membership,
                      MigrationRecord, NotificationEvent, Payment, Plan, Session as LoginSession,
-                     SystemEvent, User)
+                     SystemEvent, User, RenewalOperation)
 from .security import hash_password
 
 DEMO_PASSWORD = "WakaDemo2026!"
@@ -18,7 +18,7 @@ def _at(day, hour=9, minute=0):
 
 
 def clear_owned_data(db: Session):
-    for model in (LoginSession, MigrationRecord, NotificationEvent, AccessEvent, Payment,
+    for model in (RenewalOperation, LoginSession, MigrationRecord, NotificationEvent, AccessEvent, Payment,
                   Credential, User, Membership, Member, SystemEvent, Plan, Branch, Config):
         db.execute(delete(model))
 

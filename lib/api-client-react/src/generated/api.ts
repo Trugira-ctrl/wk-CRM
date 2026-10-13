@@ -22,6 +22,8 @@ import type {
 import type {
   ActionInput,
   ActionResult,
+  GetPayments200,
+  GetPaymentsParams,
   HealthStatus,
   LoginInput,
   MemberInput,
@@ -654,4 +656,82 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       > => {
       return useMutation(getRunActionMutationOptions(options));
     }
+
+export const getGetPaymentsUrl = (params?: GetPaymentsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/payments?${stringifiedParams}` : `/api/payments`
+}
+
+export const getPayments = async (params?: GetPaymentsParams, options?: Parameters<typeof customFetch>[1]): Promise<GetPayments200> => {
+
+  return customFetch<GetPayments200>(getGetPaymentsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPaymentsQueryKey = (params?: GetPaymentsParams,) => {
+    return [
+    `/api/payments`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetPaymentsQueryOptions = <TData = Awaited<ReturnType<typeof getPayments>>, TError = ErrorType<unknown>>(params?: GetPaymentsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPayments>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPaymentsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPayments>>> = ({ signal }) => getPayments(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPayments>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPaymentsQueryResult = NonNullable<Awaited<ReturnType<typeof getPayments>>>
+export type GetPaymentsQueryError = ErrorType<unknown>
+
+
+
+export function useGetPayments<TData = Awaited<ReturnType<typeof getPayments>>, TError = ErrorType<unknown>>(
+ params?: GetPaymentsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPayments>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPaymentsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 

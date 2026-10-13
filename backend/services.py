@@ -10,7 +10,9 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
 from .common import normalize_email, now, parse_date, required_string, today
-from .config import DEMO_MODE
+from .config import DEMO_MODE, ENVIRONMENT
+from .renewals import renew
+from .offline import sync as sync_offline
 from .models import (AccessEvent, Branch, Config, Credential, Member, Membership,
                      MigrationRecord, NotificationEvent, Payment, Plan, SystemEvent, User)
 from .security import create_session, hash_password
@@ -25,6 +27,11 @@ METHODS = {1: {"SPEEDGATE_CARD"}, 2: {"RECEPTION_CARD", "RECEPTION_QR", "MANUAL_
 def require(condition, status, detail):
     if not condition:
         raise HTTPException(status, detail=detail)
+
+
+def require_simulation():
+    require(DEMO_MODE and ENVIRONMENT != "production", 403,
+            "Simulated activation and integrations are disabled; no real provider is configured")
 
 
 def get_member(db, member_id):
@@ -51,7 +58,7 @@ def validate_member_input(db: Session, data: dict, existing: Member | None = Non
     require(not duplicate or (existing and duplicate.id == existing.id), 409, "A member with this email already exists")
     old = current_membership(existing) if existing else None
     start = parse_date(data.get("start_date"), "start_date", True) or (old.start_date if old else today())
-    end = parse_date(data.get("end_date"), "end_date", True) or (old.end_date if old else start + timedelta(days=plan.duration_days))
+    end = parse_date(data.get("end_date"), "end_date", True) or (old.end_date if old else start + timedelta(days=plan.duration_days - 1))
     require(end >= start, 400, "end_date must be on or after start_date")
     dob = parse_date(data.get("date_of_birth"), "date_of_birth", True)
     require(not dob or dob < today(), 400, "date_of_birth must be in the past")
@@ -66,6 +73,7 @@ def validate_member_input(db: Session, data: dict, existing: Member | None = Non
 
 
 def create_member(db: Session, data: dict, record_default=True, create_login=False):
+    require_simulation()
     v = validate_member_input(db, data)
     m = Member(full_name=v["full_name"], email=v["email"], phone=v["phone"], branch_id=v["branch_id"],
                gender=v["gender"], date_of_birth=v["dob"], emergency_contact=v["emergency_contact"],
@@ -91,7 +99,10 @@ def create_member(db: Session, data: dict, record_default=True, create_login=Fal
 
 
 def audit(db, kind, message):
-    db.add(SystemEvent(type=kind, message=message, created_at=now()))
+    db.add(SystemEvent(type=kind, message=json.dumps({
+        "actor_id": db.info.get("actor_id"), "action": kind, "detail": message,
+        "result": "RECORDED",
+    }), created_at=now()))
 
 
 def parse_migration(db: Session, raw: str):
@@ -142,6 +153,7 @@ def parse_migration(db: Session, raw: str):
 
 
 def run_action(db: Session, user: User, body: dict):
+    db.info["actor_id"] = user.id
     action = body.get("action")
     require(action, 400, "action is required")
     if action in {"preview_migration", "import_migration", "reset_demo", "update_plan"}:
@@ -151,13 +163,32 @@ def run_action(db: Session, user: User, body: dict):
     else:
         require(user.role in STAFF, 403, "Staff role required")
 
+    if action in {"renew_membership", "register_member", "run_reminders", "sync_offline",
+                  "controller_status", "import_migration", "reset_demo", "checkin"}:
+        require_simulation()
     if action == "register_member":
+        if user.role != "ADMIN":
+            candidate = body.get("member") or {}
+            plan = db.get(Plan, candidate.get("plan_id"))
+            start = parse_date(candidate.get("start_date"), "start_date", True) or today()
+            require(start == today(), 403, "Only administrators may adjust membership dates")
+            expected = start + timedelta(days=plan.duration_days - 1) if plan else None
+            require(not candidate.get("end_date") or candidate["end_date"] == str(expected),
+                    403, "Only administrators may adjust membership dates")
         m, _ = create_member(db, body.get("member"), record_default=True)
         audit(db, "MEMBER_REGISTERED", f"{m.full_name} registered by {user.email}")
         db.commit(); return {"ok": True, "message": "Member registered", "member": member_json(get_member(db, m.id))}
     if action == "update_member":
+        # Serialize administrative adjustments with purchases on the member row.
+        db.scalar(select(Member).where(Member.id == body.get("member_id")).with_for_update())
         m = get_member(db, body.get("member_id"))
         v = validate_member_input(db, body.get("member"), m)
+        old = current_membership(m)
+        changed = (old is None or v["start"] != old.start_date or v["end"] != old.end_date
+                   or v["plan"].id != old.plan_id)
+        require(not changed or user.role == "ADMIN", 403, "Only administrators may adjust membership entitlement")
+        if changed:
+            require_simulation()
         for field in ("full_name", "email", "phone", "branch_id", "gender", "emergency_contact", "notes"):
             setattr(m, field, v[field])
         m.date_of_birth = v["dob"]
@@ -185,17 +216,7 @@ def run_action(db: Session, user: User, body: dict):
         c.status = "DISABLED"; audit(db, "CREDENTIAL_DISABLED", f"Credential {c.identifier} disabled")
         db.commit(); return {"ok": True, "message": "Credential disabled"}
     if action == "renew_membership":
-        m = get_member(db, body.get("member_id"))
-        require(user.role != "MEMBER" or user.member_id == m.id, 403, "Members may only renew their own membership")
-        plan = db.get(Plan, body.get("plan_id")); require(plan, 404, "Plan not found")
-        old = current_membership(m)
-        start = old.start_date if old and effective_status(old) == "ACTIVE" else today()
-        end = max(today(), old.end_date) if old and effective_status(old) == "ACTIVE" else today()
-        db.add(Membership(member_id=m.id, plan_id=plan.id, start_date=start,
-                          end_date=end + timedelta(days=plan.duration_days), status="ACTIVE", created_at=now()))
-        db.add(Payment(member_id=m.id, amount=plan.price, currency="RWF", provider="SIMULATED", status="SUCCESS", created_at=now()))
-        audit(db, "MEMBERSHIP_RENEWED", f"{m.full_name} renewed {plan.name}")
-        db.commit(); return {"ok": True, "message": "Membership renewed with simulated payment", "member": member_json(get_member(db, m.id))}
+        return renew(db, user, body)
     if action == "checkin":
         return checkin(db, user, body)
     if action == "run_reminders":
@@ -305,53 +326,6 @@ def reminders(db: Session, body: dict):
     audit(db, "REMINDER_COMPLETE", f"{member.full_name}: {final}")
     db.commit()
     return {"ok": True, "message": final, "run_id": run_id}
-
-
-def sync_offline(db: Session, body: dict):
-    generation = db.get(Config, "demo_generation")
-    require(generation and body.get("generation") == generation.value, 409, "Stale demo generation; discard the browser simulator queue")
-    events = body.get("events")
-    require(isinstance(events, list), 400, "events array is required")
-    require(len(events) <= 200, 400, "Offline sync is limited to 200 events")
-    synced = 0
-    for raw in events:
-        require(isinstance(raw, dict), 400, "Each offline event must be an object")
-        try: event_id = str(uuid.UUID(str(raw.get("id"))))
-        except (ValueError, TypeError, AttributeError): raise HTTPException(400, detail="Offline event id must be a UUID")
-        require(raw.get("branch_id") == 1 and raw.get("method") == "SPEEDGATE_CARD", 400,
-                "Offline events must use Branch 1 SPEEDGATE_CARD")
-        require(raw.get("decision") in {"ALLOWED", "DENIED"}, 400, "Invalid offline decision")
-        try:
-            occurred = datetime.fromisoformat(str(raw.get("occurred_at")).replace("Z", "+00:00"))
-            require(occurred.tzinfo is not None, 400, "occurred_at must include a timezone")
-            occurred = occurred.astimezone(timezone.utc)
-        except (ValueError, TypeError):
-            raise HTTPException(400, detail="Invalid occurred_at")
-        require(occurred <= now() + timedelta(minutes=2), 400, "Offline event cannot occur in the future")
-        require(occurred >= now() - timedelta(days=30), 400, "Offline event is too old")
-        try: member_id = int(raw.get("member_id"))
-        except (TypeError, ValueError): raise HTTPException(400, detail="Offline member_id is required")
-        member = db.get(Member, member_id); require(member, 400, "Unknown offline member")
-        # Historical queued events intentionally do not re-check current membership/card state:
-        # the trusted browser simulator represents the frozen controller cache at occurrence time.
-        reason = required_string(raw.get("reason"), "Offline decision reason", 500)
-        existing = db.get(AccessEvent, event_id)
-        if existing:
-            require(existing.offline and existing.member_id == member_id and
-                    existing.branch_id == 1 and existing.method == "SPEEDGATE_CARD" and
-                    existing.decision == raw["decision"] and
-                    (existing.occurred_at.replace(tzinfo=timezone.utc) if existing.occurred_at.tzinfo is None
-                     else existing.occurred_at) == occurred,
-                    409, "Offline event UUID conflicts with a different event")
-            continue
-        db.add(AccessEvent(id=event_id, member_id=member.id, member_name=member.full_name,
-                           branch_id=1, method="SPEEDGATE_CARD", decision=raw["decision"],
-                           reason=reason, occurred_at=occurred, offline=True, sync_status="SYNCED"))
-        synced += 1
-    audit(db, "OFFLINE_SYNC", f"Synced {synced} browser-simulated cached events; decisions reflect frozen cache")
-    branch = db.get(Branch, 1); branch.last_sync = now()
-    db.commit()
-    return {"ok": True, "message": "Offline events synchronized", "synced": synced}
 
 
 def import_migration(db: Session, rows):

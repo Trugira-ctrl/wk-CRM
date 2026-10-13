@@ -1,6 +1,7 @@
 "use client";
 
 import { fmtDate } from "@/lib/waka-ops";
+import { renewalKey, completeRenewal } from "@/lib/renewal-key";
 
 import { useGetWorkspace, useRunAction } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -37,10 +38,16 @@ export default function MemberPortalPage() {
       data: {
         action: "renew_membership",
         member_id: member.id,
-        plan_id: Number(renewalPlanId)
+        plan_id: Number(renewalPlanId),
+        idempotency_key: renewalKey(member.id, Number(renewalPlanId))
       }
     }, {
-      onSuccess: () => {
+      onSuccess: (result) => {
+        if (!result.ok) {
+          toast({ title: "Renewal not completed", description: result.message, variant: "destructive" });
+          return;
+        }
+        completeRenewal(member.id, Number(renewalPlanId));
         toast({ title: "SIMULATED PAYMENT SUCCESSFUL", description: "Your membership has been renewed." });
         setIsRenewOpen(false);
         refetch();
