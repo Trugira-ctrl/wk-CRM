@@ -28,6 +28,13 @@ COMPOSE_PARALLEL_LIMIT=1 docker compose --progress plain build backend initializ
 docker compose up -d --wait --wait-timeout 120 db
 docker compose run --rm --no-deps initialize
 docker compose up -d --wait --wait-timeout 180
+# Refresh file mounts replaced by Git and Nginx's upstream container addresses.
+# Recreate only the gateways; the database keeps its persistent volume.
+gateway_services=(proxy)
+if docker compose config --services | grep -qx https; then
+  gateway_services+=(https)
+fi
+docker compose up -d --no-deps --force-recreate --wait --wait-timeout 120 "${gateway_services[@]}"
 # Seed exactly once, and only an empty first-install demo dataset.
 if [ ! -f "$state_dir/initialized" ]; then
   users="$(docker compose exec -T db psql -U waka -d waka -Atc 'select count(*) from waka_users')"
@@ -40,7 +47,6 @@ curl --fail --silent --show-error --max-time 20 http://127.0.0.1/health/db >/dev
 curl --fail --silent --show-error --max-time 20 http://127.0.0.1/website >/dev/null
 # With HTTPS enabled, verify the public certificate through the local gateway too.
 if docker compose config --services | grep -qx https; then
-  docker compose exec -T https caddy reload --config /etc/caddy/Caddyfile
   public_host="$(docker compose exec -T https printenv PUBLIC_HOST)"
   curl --fail --silent --show-error --max-time 10 --retry 20 --retry-all-errors --retry-delay 2 \
     --resolve "$public_host:443:127.0.0.1" "https://$public_host/health/db" >/dev/null
