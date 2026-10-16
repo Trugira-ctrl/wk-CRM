@@ -180,13 +180,16 @@ def run_action(db: Session, user: User, body: dict):
         db.commit(); return {"ok": True, "message": "Member registered", "member": member_json(get_member(db, m.id))}
     if action == "update_member":
         # Serialize administrative adjustments with purchases on the member row.
-        db.scalar(select(Member).where(Member.id == body.get("member_id")).with_for_update())
+        db.scalar(select(Member).where(Member.id == body.get("member_id")).with_for_update()
+                  .execution_options(populate_existing=True))
         m = get_member(db, body.get("member_id"))
         v = validate_member_input(db, body.get("member"), m)
         old = current_membership(m)
         changed = (old is None or v["start"] != old.start_date or v["end"] != old.end_date
                    or v["plan"].id != old.plan_id)
         require(not changed or user.role == "ADMIN", 403, "Only administrators may adjust membership entitlement")
+        require(type(body.get("expected_version")) is int and body["expected_version"] == m.version,
+                409, "This profile changed. Reload and reopen the edit form before saving.")
         if changed:
             require_simulation()
         for field in ("full_name", "email", "phone", "branch_id", "gender", "emergency_contact", "notes"):
@@ -197,6 +200,7 @@ def run_action(db: Session, user: User, body: dict):
             ms = Membership(member_id=m.id, status="ACTIVE", created_at=now())
             db.add(ms)
         ms.plan_id = v["plan"].id; ms.start_date = v["start"]; ms.end_date = v["end"]
+        m.version += 1
         linked = db.scalar(select(User).where(User.member_id == m.id))
         if linked: linked.name, linked.email = m.full_name, m.email
         audit(db, "MEMBER_UPDATED", f"{m.full_name} updated by {user.email}")

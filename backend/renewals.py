@@ -12,6 +12,22 @@ from .requests import RenewalRequest, validated
 from .serializers import current_membership, member_json
 
 
+def extend_membership(db, member, plan):
+    """Caller holds the member lock and commits payment/credit with this write."""
+    db.expire(member, ["memberships"])
+    old = current_membership(member)
+    if old and (old.status not in {"ACTIVE", "EXPIRED"} or old.start_date > today()):
+        raise HTTPException(409, detail="Membership requires an administrator review before renewal")
+    active = old and old.end_date >= today()
+    start = old.start_date if active else today()
+    end = (old.end_date if active else today() - timedelta(days=1)) + timedelta(days=plan.duration_days)
+    membership = Membership(member_id=member.id, plan_id=plan.id, start_date=start,
+                            end_date=end, status="ACTIVE", created_at=now())
+    db.add(membership)
+    member.version += 1
+    return membership
+
+
 def renew(db, user, body):
     data = validated(RenewalRequest, body)
     if user.role == "MEMBER" and user.member_id != data.member_id:
@@ -45,13 +61,7 @@ def renew(db, user, body):
     db.add(payment)
     membership = None
     if not data.simulate_failure:
-        # Inclusive local dates: 30 days starting today ends today + 29.
-        active = old and old.end_date >= today()
-        start = old.start_date if active else today()
-        end = (old.end_date if active else today() - timedelta(days=1)) + timedelta(days=plan.duration_days)
-        membership = Membership(member_id=member.id, plan_id=plan.id, start_date=start,
-                                end_date=end, status="ACTIVE", created_at=now())
-        db.add(membership)
+        membership = extend_membership(db, member, plan)
     db.flush()
     db.expire(member, ["memberships"])
     operation_id = str(uuid.uuid4())

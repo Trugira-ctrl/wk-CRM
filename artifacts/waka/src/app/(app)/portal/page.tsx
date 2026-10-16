@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState } from "react";
+import { WalletPanel } from "@/components/wallet-panel";
 
 export default function MemberPortalPage() {
   const { data: workspace, refetch } = useGetWorkspace();
@@ -71,6 +72,8 @@ export default function MemberPortalPage() {
         <p className="text-zinc-500 mt-1">Manage your WAKA membership</p>
       </div>
 
+      <WalletPanel key={member.id} memberId={member.id} plans={workspace.plans} isAdmin={false} />
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card className="rounded-none border-zinc-200 shadow-none">
           <CardHeader>
@@ -98,7 +101,7 @@ export default function MemberPortalPage() {
             <div className="pt-4 border-t border-zinc-100">
               <Dialog open={isRenewOpen} onOpenChange={setIsRenewOpen}>
                 <Button className="w-full rounded-none font-bold uppercase tracking-widest bg-zinc-900 hover:bg-zinc-800 text-white" onClick={openRenew}>
-                  <Zap className="w-4 h-4 mr-2" /> Renew Membership
+                  <Zap className="w-4 h-4 mr-2" /> Direct Membership Purchase
                 </Button>
                 <DialogContent className="rounded-none border-zinc-200">
                   <DialogHeader>
@@ -134,7 +137,7 @@ export default function MemberPortalPage() {
                     
                     <div className="p-4 border border-zinc-200 bg-zinc-50 text-center">
                       <div className="font-bold uppercase tracking-widest text-sm mb-1">Simulated Payment Provider</div>
-                      <div className="text-xs text-zinc-500">Completing this will add time to the membership and generate a fake payment record.</div>
+                      <div className="text-xs text-zinc-500">Pays directly without using gym credit. Available during the wallet top-up pause. This demo adds membership time and a simulated payment record.</div>
                     </div>
                     
                     <Button onClick={handleRenew} className="w-full rounded-none font-bold uppercase tracking-widest bg-zinc-900 text-white hover:bg-zinc-800" disabled={runAction.isPending || !renewalPlanId}>

@@ -47,6 +47,7 @@ export default function MemberProfilePage() {
   const [credentialType, setCredentialType] = useState<"CARD" | "QR">("CARD");
 
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [editVersion, setEditVersion] = useState<number | undefined>();
   const [isRenewOpen, setIsRenewOpen] = useState(false);
   const [renewalPlanId, setRenewalPlanId] = useState<string>("");
 
@@ -66,6 +67,7 @@ export default function MemberProfilePage() {
   const hasQR = activeCredentials.some(c => c.type === 'QR');
 
   const openEdit = () => {
+    setEditVersion(member.version);
     form.reset({
       full_name: member.full_name,
       email: member.email,
@@ -87,6 +89,7 @@ export default function MemberProfilePage() {
       data: {
         action: "update_member",
         member_id: member.id,
+        expected_version: editVersion,
         member: values
       }
     }, {

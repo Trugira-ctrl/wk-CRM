@@ -6,6 +6,40 @@ info:
 servers:
   - url: /api
 paths:
+  /wallet:
+    get:
+      operationId: getWallet
+      parameters:
+        - in: query
+          name: member_id
+          required: true
+          schema: {type: integer, minimum: 1}
+      responses:
+        "200":
+          description: Scoped simulated gym credit account
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Wallet"}
+  /wallet/actions:
+    post:
+      operationId: runWalletAction
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/WalletActionInput"}
+      responses:
+        "200":
+          description: Simulated operation result
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, message, operation]
+                properties:
+                  ok: {type: boolean}
+                  message: {type: string}
+                  operation: {$ref: "#/components/schemas/WalletOperation"}
   /healthz:
     get:
       operationId: healthCheck
@@ -180,9 +214,10 @@ components:
         status: {type: string, enum: [ACTIVE, DISABLED, LOST]}
     Member:
       type: object
-      required: [id, full_name, phone, email, branch_id, plan_id, plan_name, start_date, end_date, status, credentials, created_at]
+      required: [id, version, full_name, phone, email, branch_id, plan_id, plan_name, start_date, end_date, status, credentials, created_at]
       properties:
         id: {type: integer}
+        version: {type: integer}
         full_name: {type: string}
         phone: {type: string}
         email: {type: string}
@@ -256,6 +291,70 @@ components:
         created_at: {type: string}
         final_status: {type: string}
         run_id: {type: string}
+    WalletActionInput:
+      type: object
+      required: [action, member_id]
+      properties:
+        action:
+          type: string
+          enum: [wallet_topup, wallet_confirm_topup, wallet_purchase, wallet_request_refund, wallet_review_refund, wallet_confirm_refund]
+        member_id: {type: integer}
+        amount: {type: integer, minimum: 1, maximum: 10000000}
+        idempotency_key: {type: string}
+        plan_id: {type: integer}
+        reason: {type: string}
+        operation_id: {type: string}
+        outcome: {type: string, enum: [SUCCESSFUL, FAILED]}
+        decision: {type: string, enum: [APPROVE, REJECT]}
+        category: {type: string, enum: [VOLUNTARY, PAYMENT_ERROR]}
+    WalletOperation:
+      type: object
+      required: [id, kind, status, amount, remaining, created_at, details]
+      properties:
+        id: {type: string}
+        kind: {type: string, enum: [TOPUP, PURCHASE, REFUND]}
+        status: {type: string}
+        amount: {type: integer}
+        remaining: {type: integer}
+        created_at: {type: string}
+        details:
+          type: object
+          properties:
+            reason: {type: string}
+            category: {type: string}
+            plan_id: {type: integer}
+            payment_id: {type: integer}
+    Wallet:
+      type: object
+      required: [member_id, currency, simulated, balance, reserved, available, topup_blocked_until, can_topup, cooldown_months, direct_purchase_allowed, operations, entries]
+      properties:
+        member_id: {type: integer}
+        currency: {type: string}
+        simulated: {type: boolean}
+        balance: {type: integer}
+        reserved: {type: integer}
+        available: {type: integer}
+        topup_blocked_until: {type: [string, "null"]}
+        can_topup: {type: boolean}
+        cooldown_months: {type: integer}
+        direct_purchase_allowed: {type: boolean}
+        operations:
+          type: array
+          items: {$ref: "#/components/schemas/WalletOperation"}
+        entries:
+          type: array
+          items:
+            type: object
+            required: [id, operation_id, kind, balance_delta, reserved_delta, balance_after, reserved_after, created_at]
+            properties:
+              id: {type: integer}
+              operation_id: {type: string}
+              kind: {type: string}
+              balance_delta: {type: integer}
+              reserved_delta: {type: integer}
+              balance_after: {type: integer}
+              reserved_after: {type: integer}
+              created_at: {type: string}
     NotificationRun:
       type: object
       required: [id, member_id, member_name, started_at, final_status, legacy, uncertain, attempts]
@@ -381,6 +480,7 @@ components:
           enum: [register_member, update_member, assign_card, disable_card, renew_membership, checkin, run_reminders, controller_status, sync_offline, preview_migration, import_migration, reset_demo, update_plan]
         member: {$ref: "#/components/schemas/MemberInput"}
         member_id: {type: integer}
+        expected_version: {type: integer}
         credential_id: {type: integer}
         identifier: {type: string}
         credential_type: {type: string, enum: [CARD, QR]}

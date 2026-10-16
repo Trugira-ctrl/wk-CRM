@@ -8,6 +8,88 @@
 import * as zod from 'zod';
 
 
+
+
+
+export const GetWalletQueryParams = zod.object({
+  "member_id": zod.coerce.number().int().min(1)
+})
+
+export const GetWalletResponse = zod.object({
+  "member_id": zod.number().int(),
+  "currency": zod.string(),
+  "simulated": zod.boolean(),
+  "balance": zod.number().int(),
+  "reserved": zod.number().int(),
+  "available": zod.number().int(),
+  "topup_blocked_until": zod.string().nullable(),
+  "can_topup": zod.boolean(),
+  "cooldown_months": zod.number().int(),
+  "direct_purchase_allowed": zod.boolean(),
+  "operations": zod.array(zod.object({
+  "id": zod.string(),
+  "kind": zod.enum(['TOPUP', 'PURCHASE', 'REFUND']),
+  "status": zod.string(),
+  "amount": zod.number().int(),
+  "remaining": zod.number().int(),
+  "created_at": zod.string(),
+  "details": zod.object({
+  "reason": zod.string().optional(),
+  "category": zod.string().optional(),
+  "plan_id": zod.number().int().optional(),
+  "payment_id": zod.number().int().optional()
+})
+})),
+  "entries": zod.array(zod.object({
+  "id": zod.number().int(),
+  "operation_id": zod.string(),
+  "kind": zod.string(),
+  "balance_delta": zod.number().int(),
+  "reserved_delta": zod.number().int(),
+  "balance_after": zod.number().int(),
+  "reserved_after": zod.number().int(),
+  "created_at": zod.string()
+}))
+})
+
+
+export const runWalletActionBodyAmountMax = 10000000;
+
+
+
+export const RunWalletActionBody = zod.object({
+  "action": zod.enum(['wallet_topup', 'wallet_confirm_topup', 'wallet_purchase', 'wallet_request_refund', 'wallet_review_refund', 'wallet_confirm_refund']),
+  "member_id": zod.number().int(),
+  "amount": zod.number().int().min(1).max(runWalletActionBodyAmountMax).optional(),
+  "idempotency_key": zod.string().optional(),
+  "plan_id": zod.number().int().optional(),
+  "reason": zod.string().optional(),
+  "operation_id": zod.string().optional(),
+  "outcome": zod.enum(['SUCCESSFUL', 'FAILED']).optional(),
+  "decision": zod.enum(['APPROVE', 'REJECT']).optional(),
+  "category": zod.enum(['VOLUNTARY', 'PAYMENT_ERROR']).optional()
+})
+
+export const RunWalletActionResponse = zod.object({
+  "ok": zod.boolean(),
+  "message": zod.string(),
+  "operation": zod.object({
+  "id": zod.string(),
+  "kind": zod.enum(['TOPUP', 'PURCHASE', 'REFUND']),
+  "status": zod.string(),
+  "amount": zod.number().int(),
+  "remaining": zod.number().int(),
+  "created_at": zod.string(),
+  "details": zod.object({
+  "reason": zod.string().optional(),
+  "category": zod.string().optional(),
+  "plan_id": zod.number().int().optional(),
+  "payment_id": zod.number().int().optional()
+})
+})
+})
+
+
 export const HealthCheckResponse = zod.object({
   "status": zod.string()
 })
@@ -47,6 +129,7 @@ export const LogoutResponse = zod.object({
   "message": zod.string(),
   "member": zod.object({
   "id": zod.number().int(),
+  "version": zod.number().int(),
   "full_name": zod.string(),
   "phone": zod.string(),
   "email": zod.string(),
@@ -147,6 +230,7 @@ export const JoinResponse = zod.object({
   "message": zod.string(),
   "member": zod.object({
   "id": zod.number().int(),
+  "version": zod.number().int(),
   "full_name": zod.string(),
   "phone": zod.string(),
   "email": zod.string(),
@@ -216,6 +300,7 @@ export const GetWorkspaceResponse = zod.object({
 }),
   "members": zod.array(zod.object({
   "id": zod.number().int(),
+  "version": zod.number().int(),
   "full_name": zod.string(),
   "phone": zod.string(),
   "email": zod.string(),
@@ -367,6 +452,7 @@ export const RunActionBody = zod.object({
   "record_payment": zod.boolean().optional()
 }).optional(),
   "member_id": zod.number().int().optional(),
+  "expected_version": zod.number().int().optional(),
   "credential_id": zod.number().int().optional(),
   "identifier": zod.string().optional(),
   "credential_type": zod.enum(['CARD', 'QR']).optional(),
@@ -418,6 +504,7 @@ export const RunActionResponse = zod.object({
   "message": zod.string(),
   "member": zod.object({
   "id": zod.number().int(),
+  "version": zod.number().int(),
   "full_name": zod.string(),
   "phone": zod.string(),
   "email": zod.string(),

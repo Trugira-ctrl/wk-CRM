@@ -67,6 +67,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     { name: "Gate Simulator", href: "/gate", icon: Shield },
     { name: "Notifications", href: "/notifications", icon: Bell },
     { name: "Payments", href: "/payments", icon: CreditCard },
+    { name: "Wallets", href: "/wallet", icon: CreditCard },
   ];
 
   const adminNav = [

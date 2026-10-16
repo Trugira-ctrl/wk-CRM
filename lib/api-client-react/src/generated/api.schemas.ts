@@ -104,6 +104,7 @@ export const MemberStatus = {
 
 export interface Member {
   id: number;
+  version: number;
   full_name: string;
   phone: string;
   email: string;
@@ -187,6 +188,112 @@ export interface Notification {
   created_at: string;
   final_status: string;
   run_id: string;
+}
+
+export type WalletActionInputAction = typeof WalletActionInputAction[keyof typeof WalletActionInputAction];
+
+
+export const WalletActionInputAction = {
+  wallet_topup: 'wallet_topup',
+  wallet_confirm_topup: 'wallet_confirm_topup',
+  wallet_purchase: 'wallet_purchase',
+  wallet_request_refund: 'wallet_request_refund',
+  wallet_review_refund: 'wallet_review_refund',
+  wallet_confirm_refund: 'wallet_confirm_refund',
+} as const;
+
+export type WalletActionInputOutcome = typeof WalletActionInputOutcome[keyof typeof WalletActionInputOutcome];
+
+
+export const WalletActionInputOutcome = {
+  SUCCESSFUL: 'SUCCESSFUL',
+  FAILED: 'FAILED',
+} as const;
+
+export type WalletActionInputDecision = typeof WalletActionInputDecision[keyof typeof WalletActionInputDecision];
+
+
+export const WalletActionInputDecision = {
+  APPROVE: 'APPROVE',
+  REJECT: 'REJECT',
+} as const;
+
+export type WalletActionInputCategory = typeof WalletActionInputCategory[keyof typeof WalletActionInputCategory];
+
+
+export const WalletActionInputCategory = {
+  VOLUNTARY: 'VOLUNTARY',
+  PAYMENT_ERROR: 'PAYMENT_ERROR',
+} as const;
+
+export interface WalletActionInput {
+  action: WalletActionInputAction;
+  member_id: number;
+  /**
+     * @minimum 1
+     * @maximum 10000000
+     */
+  amount?: number;
+  idempotency_key?: string;
+  plan_id?: number;
+  reason?: string;
+  operation_id?: string;
+  outcome?: WalletActionInputOutcome;
+  decision?: WalletActionInputDecision;
+  category?: WalletActionInputCategory;
+}
+
+export type WalletOperationKind = typeof WalletOperationKind[keyof typeof WalletOperationKind];
+
+
+export const WalletOperationKind = {
+  TOPUP: 'TOPUP',
+  PURCHASE: 'PURCHASE',
+  REFUND: 'REFUND',
+} as const;
+
+export type WalletOperationDetails = {
+  reason?: string;
+  category?: string;
+  plan_id?: number;
+  payment_id?: number;
+};
+
+export interface WalletOperation {
+  id: string;
+  kind: WalletOperationKind;
+  status: string;
+  amount: number;
+  remaining: number;
+  created_at: string;
+  details: WalletOperationDetails;
+}
+
+export type WalletEntriesItem = {
+  id: number;
+  operation_id: string;
+  kind: string;
+  balance_delta: number;
+  reserved_delta: number;
+  balance_after: number;
+  reserved_after: number;
+  created_at: string;
+};
+
+export interface Wallet {
+  member_id: number;
+  currency: string;
+  simulated: boolean;
+  balance: number;
+  reserved: number;
+  available: number;
+  /** @nullable */
+  topup_blocked_until: string | null;
+  can_topup: boolean;
+  cooldown_months: number;
+  direct_purchase_allowed: boolean;
+  operations: WalletOperation[];
+  entries: WalletEntriesItem[];
 }
 
 export interface NotificationRun {
@@ -303,6 +410,7 @@ export interface ActionInput {
   action: ActionInputAction;
   member?: MemberInput;
   member_id?: number;
+  expected_version?: number;
   credential_id?: number;
   identifier?: string;
   credential_type?: ActionInputCredentialType;
@@ -354,6 +462,19 @@ export interface ActionResult {
   results?: ActionResultResultsItem[];
   run_id?: string;
 }
+
+export type GetWalletParams = {
+/**
+ * @minimum 1
+ */
+member_id: number;
+};
+
+export type RunWalletAction200 = {
+  ok: boolean;
+  message: string;
+  operation: WalletOperation;
+};
 
 export type GetPaymentsParams = {
 /**

@@ -1,6 +1,6 @@
 from datetime import date, datetime
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Index, Integer, Numeric, String, Text, UniqueConstraint, func
+from sqlalchemy import Boolean, CheckConstraint, Date, DateTime, ForeignKey, Index, Integer, Numeric, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .db import Base
@@ -41,6 +41,7 @@ class Plan(Base):
 class Member(Base):
     __tablename__ = "waka_members"
     id: Mapped[int] = mapped_column(primary_key=True)
+    version: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     full_name: Mapped[str] = mapped_column(String(160))
     phone: Mapped[str] = mapped_column(String(40))
     email: Mapped[str] = mapped_column(String(320), unique=True, index=True)
@@ -104,6 +105,58 @@ class RenewalOperation(Base):
     membership_id: Mapped[int | None] = mapped_column(ForeignKey("waka_memberships.id", ondelete="CASCADE"), unique=True)
     status: Mapped[str] = mapped_column(String(20))
     result: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class WalletAccount(Base):
+    __tablename__ = "waka_wallet_accounts"
+    __table_args__ = (CheckConstraint("balance >= 0 AND reserved >= 0 AND reserved <= balance", name="ck_wallet_funds"),)
+    member_id: Mapped[int] = mapped_column(ForeignKey("waka_members.id"), primary_key=True)
+    balance: Mapped[int] = mapped_column(Integer, default=0)
+    reserved: Mapped[int] = mapped_column(Integer, default=0)
+    topup_blocked_until: Mapped[date | None] = mapped_column(Date)
+
+
+class WalletOperation(Base):
+    __tablename__ = "waka_wallet_operations"
+    __table_args__ = (
+        UniqueConstraint("member_id", "idempotency_key", name="uq_wallet_member_key"),
+        CheckConstraint("amount > 0 AND remaining >= 0 AND remaining <= amount", name="ck_wallet_operation_amount"),
+    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    member_id: Mapped[int] = mapped_column(ForeignKey("waka_members.id"), index=True)
+    actor_id: Mapped[int] = mapped_column(ForeignKey("waka_users.id"))
+    kind: Mapped[str] = mapped_column(String(20))
+    status: Mapped[str] = mapped_column(String(20))
+    amount: Mapped[int] = mapped_column(Integer)
+    remaining: Mapped[int] = mapped_column(Integer, default=0)
+    idempotency_key: Mapped[str] = mapped_column(String(100))
+    fingerprint: Mapped[str] = mapped_column(Text)
+    source_phone: Mapped[str | None] = mapped_column(String(40))
+    details: Mapped[str] = mapped_column(Text, default="{}")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class WalletRefundAllocation(Base):
+    __tablename__ = "waka_wallet_refund_allocations"
+    refund_id: Mapped[str] = mapped_column(ForeignKey("waka_wallet_operations.id"), primary_key=True)
+    deposit_id: Mapped[str] = mapped_column(ForeignKey("waka_wallet_operations.id"), primary_key=True)
+    amount: Mapped[int] = mapped_column(Integer, CheckConstraint("amount > 0"))
+
+
+class WalletEntry(Base):
+    __tablename__ = "waka_wallet_entries"
+    __table_args__ = (UniqueConstraint("operation_id", "kind", name="uq_wallet_entry_phase"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    member_id: Mapped[int] = mapped_column(ForeignKey("waka_members.id"), index=True)
+    operation_id: Mapped[str] = mapped_column(ForeignKey("waka_wallet_operations.id"))
+    actor_id: Mapped[int] = mapped_column(ForeignKey("waka_users.id"))
+    kind: Mapped[str] = mapped_column(String(30))
+    balance_delta: Mapped[int] = mapped_column(Integer)
+    reserved_delta: Mapped[int] = mapped_column(Integer)
+    balance_after: Mapped[int] = mapped_column(Integer)
+    reserved_after: Mapped[int] = mapped_column(Integer)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 

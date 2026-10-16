@@ -10,6 +10,7 @@ import type { MemberStatus } from './memberStatus';
 
 export interface Member {
   id: number;
+  version: number;
   full_name: string;
   phone: string;
   email: string;

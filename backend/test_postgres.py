@@ -20,8 +20,9 @@ def main():
     # This is an isolated database, not the application database.
     legacy = MetaData()
     for table in Base.metadata.sorted_tables:
-        if table.name != "waka_renewal_operations":
+        if table.name != "waka_renewal_operations" and not table.name.startswith("waka_wallet_"):
             table.to_metadata(legacy)
+    legacy.tables["waka_members"]._columns.remove(legacy.tables["waka_members"].c.version)
     for table in legacy.tables.values():
         table.indexes = {index for index in table.indexes if index.name not in {
             "ix_waka_payments_reporting", "ix_waka_access_branch_time"}}
@@ -33,6 +34,7 @@ def main():
         admin = User(name="Test", email="test@example.test", role="ADMIN", password_hash="unused", created_at=now())
         db.add(admin); db.commit()
         actor_id = admin.id
+        db.execute(text("ALTER TABLE waka_members ADD COLUMN version INTEGER NOT NULL DEFAULT 0"))
         member, _ = create_member(db, dict(full_name="Fictional", email="member@example.test",
                                           phone="fictional", branch_id=1, plan_id=1))
         db.commit()
@@ -40,6 +42,8 @@ def main():
         initial = db.scalar(select(func.max(Membership.end_date)))
         before = {table.name: [tuple(row) for row in db.execute(select(table))]
                   for table in legacy.sorted_tables}
+        db.execute(text("ALTER TABLE waka_members DROP COLUMN version"))
+        db.commit()
     from .migrate import main as migrate
     migrate()
     migrate()
@@ -47,7 +51,7 @@ def main():
         after = {table.name: [tuple(row) for row in db.execute(select(table))]
                  for table in legacy.sorted_tables}
         assert before == after, "Migration changed existing data"
-        assert db.scalar(text("SELECT version_num FROM alembic_version")) == "0002"
+        assert db.scalar(text("SELECT version_num FROM alembic_version")) == "0003"
     print("Legacy-schema migration, exact data preservation, repeated upgrade: PASS")
     purchases = 0
     for concurrency in (10, 25, 50, 100):

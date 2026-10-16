@@ -16,6 +16,7 @@ export interface ActionInput {
   action: ActionInputAction;
   member?: MemberInput;
   member_id?: number;
+  expected_version?: number;
   credential_id?: number;
   identifier?: string;
   credential_type?: ActionInputCredentialType;

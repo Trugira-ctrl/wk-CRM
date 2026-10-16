@@ -21,6 +21,7 @@ from .serializers import branch_checkins_today, branch_json, member_json, plan_j
 from .services import create_member, get_member, run_action
 from .requests import JoinRequest, validated
 from .reporting import payment_page
+from .wallet import wallet_view, run_wallet_action
 
 app = FastAPI(title="WAKA Phase 1 simulated operations API", version="1.0.0")
 # Queue before entering FastAPI's synchronous worker pool. Otherwise session
@@ -210,6 +211,23 @@ def actions(body: dict, response: Response, user: User = Depends(current_user), 
     if token:
         set_cookie(response, token)
     return result
+
+
+@app.get("/api/wallet")
+def get_wallet(member_id: int = Query(..., gt=0), user: User = Depends(current_user), db: Session = Depends(get_db)):
+    try:
+        return wallet_view(db, user, member_id)
+    finally:
+        db.rollback()
+
+
+@app.post("/api/wallet/actions")
+def wallet_actions(body: dict, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    try:
+        return run_wallet_action(db, user, body)
+    except Exception:
+        db.rollback()
+        raise
 
 
 @app.get("/api/sample-export.csv", response_class=PlainTextResponse)

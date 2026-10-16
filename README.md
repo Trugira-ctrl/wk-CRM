@@ -155,6 +155,10 @@ against newly seeded records. Do not mix this dataset with real member data.
 
 See [deploy/AWS_POC.md](deploy/AWS_POC.md) for the live demonstration, server pull hook, persistent database backups and update commands.
 
+## Gym credit wallet
+
+Members can add simulated prepaid credit, pay for membership with it and request reviewed refunds. Completed voluntary refunds pause new top-ups for two calendar months; direct membership purchases remain available. See [the wallet guide](docs/gym-credit.md) for the walkthrough, safeguards and remaining MTN integration work. No real money is accepted or refunded.
+
 ## Standalone Docker POC
 
 Docker files target an ordinary Linux workstation/VPS. Docker is not required

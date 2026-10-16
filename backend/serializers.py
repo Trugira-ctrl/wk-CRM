@@ -80,7 +80,7 @@ def effective_status(ms: Membership):
 
 def member_json(m: Member):
     ms = current_membership(m)
-    return {"id": m.id, "full_name": m.full_name, "phone": m.phone, "email": m.email,
+    return {"id": m.id, "version": m.version, "full_name": m.full_name, "phone": m.phone, "email": m.email,
             "branch_id": m.branch_id, "plan_id": ms.plan_id if ms else None, "plan_name": ms.plan.name if ms else "No membership",
             "start_date": iso(ms.start_date) if ms else None, "end_date": iso(ms.end_date) if ms else None, "status": effective_status(ms),
             "gender": m.gender, "date_of_birth": iso(m.date_of_birth),
@@ -187,7 +187,7 @@ def workspace(db: Session, user: User):
     demo = DEMO_MODE and ENVIRONMENT != "production"
     # With no real provider yet, production totals must be zero, never inferred
     # from arbitrary provider strings or historical simulator rows.
-    revenue_query = revenue_query.where(Payment.provider == "SIMULATED" if demo else False)
+    revenue_query = revenue_query.where(Payment.provider.in_(("SIMULATED", "SIMULATED_WALLET")) if demo else False)
     if user.role == "MEMBER":
         revenue_query = revenue_query.where(Payment.member_id == user.member_id)
     metrics = {
