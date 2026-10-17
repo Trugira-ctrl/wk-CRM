@@ -39,7 +39,7 @@ specs = [
      "={{ {workflow:'membership-expiry', day:$json.day, status:'DRAFT', summary:$json.metrics.expiring_members + ' membership(s) expire within seven days. Staff reminder review; no messages sent.', payload:{members:$json.expiring_members, total:$json.metrics.expiring_members, truncated:$json.expiring_list_truncated}} }}"),
     ("wakaDaily0000001", "WAKA - Daily operations summary", {"field": "cronExpression", "expression": "0 18 * * *"},
      request("Read WAKA daily summary", "/internal/automation/snapshot", [260, 120]),
-     "={{ {workflow:'daily-summary', day:$json.day, status:'READY', summary:'Daily WAKA operations summary at 18:00 Kigali time', payload:{metrics:$json.metrics, generated_at:$json.generated_at, demo_mode:$json.demo_mode}} }}"),
+     "={{ {workflow:'daily-summary', day:$json.day, status:'READY', summary:'Daily WAKA operations snapshot', payload:{metrics:$json.metrics, generated_at:$json.generated_at, demo_mode:$json.demo_mode}} }}"),
 ]
 
 for wid, name, interval, fetch, body in specs:
