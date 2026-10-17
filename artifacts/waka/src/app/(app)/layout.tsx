@@ -5,7 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { LogOut, Home, Users, CheckSquare, Shield, Bell, HardDrive, CreditCard, Settings, UserCircle, Menu, X } from "lucide-react";
+import { LogOut, Home, Users, CheckSquare, Shield, Bell, HardDrive, CreditCard, Settings, UserCircle, Menu, X, Workflow } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { WakaWordmark } from "@/components/brand/wordmark";
@@ -68,6 +68,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     { name: "Notifications", href: "/notifications", icon: Bell },
     { name: "Payments", href: "/payments", icon: CreditCard },
     { name: "Wallets", href: "/wallet", icon: CreditCard },
+    { name: "Automations", href: "/automations", icon: Workflow },
   ];
 
   const adminNav = [

@@ -22,6 +22,7 @@ import type {
 import type {
   ActionInput,
   ActionResult,
+  GetAutomation200,
   GetPayments200,
   GetPaymentsParams,
   GetWalletParams,
@@ -62,6 +63,77 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getGetAutomationUrl = () => {
+
+
+
+
+  return `/api/automation`
+}
+
+export const getAutomation = async ( options?: Parameters<typeof customFetch>[1]): Promise<GetAutomation200> => {
+
+  return customFetch<GetAutomation200>(getGetAutomationUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAutomationQueryKey = () => {
+    return [
+    `/api/automation`
+    ] as const;
+    }
+
+
+export const getGetAutomationQueryOptions = <TData = Awaited<ReturnType<typeof getAutomation>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAutomation>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAutomationQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAutomation>>> = ({ signal }) => getAutomation({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAutomation>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAutomationQueryResult = NonNullable<Awaited<ReturnType<typeof getAutomation>>>
+export type GetAutomationQueryError = ErrorType<unknown>
+
+
+
+export function useGetAutomation<TData = Awaited<ReturnType<typeof getAutomation>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAutomation>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAutomationQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getGetWalletUrl = (params: GetWalletParams,) => {
   const normalizedParams = new URLSearchParams();

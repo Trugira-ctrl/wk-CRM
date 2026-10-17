@@ -23,6 +23,10 @@ if [ -n "$(docker compose ps -q db)" ] && docker compose exec -T db pg_isready -
   chmod 600 "$backup"
   echo "Database backup saved: $backup"
 fi
+# Back up n8n independently; its credentials use the preserved encryption key.
+if docker compose config --services | grep -qx n8n-db && docker compose exec -T n8n-db pg_isready -U n8n -d n8n >/dev/null 2>&1; then
+  docker compose exec -T n8n-db pg_dump -U n8n -d n8n -Fc > "$state_dir/backups/$(date -u +%Y%m%dT%H%M%SZ)-n8n-${revision:0:12}.dump"
+fi
 # Existing app keeps running while replacement images are built.
 COMPOSE_PARALLEL_LIMIT=1 docker compose --progress plain build backend initialize frontend
 docker compose up -d --wait --wait-timeout 120 db
@@ -50,6 +54,9 @@ if docker compose config --services | grep -qx https; then
   public_host="$(docker compose exec -T https printenv PUBLIC_HOST)"
   curl --fail --silent --show-error --max-time 10 --retry 20 --retry-all-errors --retry-delay 2 \
     --resolve "$public_host:443:127.0.0.1" "https://$public_host/health/db" >/dev/null
+fi
+if docker compose config --services | grep -qx n8n; then
+  bash deploy/n8n/sync-workflows.sh
 fi
 printf '%s\n' "$revision" > "$state_dir/deployed-revision"
 printf '%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$state_dir/deployed-at"

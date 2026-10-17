@@ -5,6 +5,53 @@
  * WAKA Phase 1 simulated operations API
  * OpenAPI spec version: 1.0.0
  */
+export type AutomationReportWorkflow = typeof AutomationReportWorkflow[keyof typeof AutomationReportWorkflow];
+
+
+export const AutomationReportWorkflow = {
+  'health-check': 'health-check',
+  'membership-expiry': 'membership-expiry',
+  'daily-summary': 'daily-summary',
+} as const;
+
+export type AutomationReportStatus = typeof AutomationReportStatus[keyof typeof AutomationReportStatus];
+
+
+export const AutomationReportStatus = {
+  HEALTHY: 'HEALTHY',
+  UNHEALTHY: 'UNHEALTHY',
+  DRAFT: 'DRAFT',
+  READY: 'READY',
+} as const;
+
+export type AutomationReportPayloadMetrics = {[key: string]: number};
+
+export type AutomationReportPayloadMembersItem = {
+  id: number;
+  name: string;
+  branch_id: number;
+  end_date: string;
+  days_remaining: number;
+};
+
+export type AutomationReportPayload = {
+  total?: number;
+  truncated?: boolean;
+  demo_mode?: boolean;
+  metrics?: AutomationReportPayloadMetrics;
+  members?: AutomationReportPayloadMembersItem[];
+};
+
+export interface AutomationReport {
+  workflow: AutomationReportWorkflow;
+  day: string;
+  status: AutomationReportStatus;
+  summary: string;
+  recorded_at: string;
+  external_messages_sent: boolean;
+  payload: AutomationReportPayload;
+}
+
 export interface HealthStatus {
   status: string;
 }
@@ -462,6 +509,12 @@ export interface ActionResult {
   results?: ActionResultResultsItem[];
   run_id?: string;
 }
+
+export type GetAutomation200 = {
+  timezone: string;
+  external_messages_enabled: boolean;
+  reports: AutomationReport[];
+};
 
 export type GetWalletParams = {
 /**

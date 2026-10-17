@@ -8,6 +8,33 @@
 import * as zod from 'zod';
 
 
+export const GetAutomationResponse = zod.object({
+  "timezone": zod.string(),
+  "external_messages_enabled": zod.boolean(),
+  "reports": zod.array(zod.object({
+  "workflow": zod.enum(['health-check', 'membership-expiry', 'daily-summary']),
+  "day": zod.string(),
+  "status": zod.enum(['HEALTHY', 'UNHEALTHY', 'DRAFT', 'READY']),
+  "summary": zod.string(),
+  "recorded_at": zod.string(),
+  "external_messages_sent": zod.boolean(),
+  "payload": zod.object({
+  "total": zod.number().int().optional(),
+  "truncated": zod.boolean().optional(),
+  "demo_mode": zod.boolean().optional(),
+  "metrics": zod.record(zod.string(), zod.number()).optional(),
+  "members": zod.array(zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "branch_id": zod.number().int(),
+  "end_date": zod.string(),
+  "days_remaining": zod.number().int()
+})).optional()
+})
+}))
+})
+
+
 
 
 

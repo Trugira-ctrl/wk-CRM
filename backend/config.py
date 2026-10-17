@@ -7,6 +7,7 @@ COOKIE_SECURE = os.environ.get("COOKIE_SECURE", "true" if ENVIRONMENT == "produc
 ALLOWED_ORIGINS = {v.strip().rstrip("/") for v in os.environ.get("ALLOWED_ORIGINS", "").split(",") if v.strip()}
 SESSION_COOKIE = "waka_session"
 SESSION_DAYS = 7
+AUTOMATION_TOKEN = os.environ.get("AUTOMATION_TOKEN", "")
 
 if ENVIRONMENT == "production":
     if DEMO_MODE or not COOKIE_SECURE:

@@ -6,6 +6,23 @@ info:
 servers:
   - url: /api
 paths:
+  /automation:
+    get:
+      operationId: getAutomation
+      responses:
+        "200":
+          description: Staff-only internal automation reports
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [reports, timezone, external_messages_enabled]
+                properties:
+                  timezone: {type: string}
+                  external_messages_enabled: {type: boolean}
+                  reports:
+                    type: array
+                    items: {$ref: "#/components/schemas/AutomationReport"}
   /wallet:
     get:
       operationId: getWallet
@@ -154,6 +171,36 @@ paths:
                   total: {type: integer}
 components:
   schemas:
+    AutomationReport:
+      type: object
+      required: [workflow, day, status, summary, payload, recorded_at, external_messages_sent]
+      properties:
+        workflow: {type: string, enum: [health-check, membership-expiry, daily-summary]}
+        day: {type: string}
+        status: {type: string, enum: [HEALTHY, UNHEALTHY, DRAFT, READY]}
+        summary: {type: string}
+        recorded_at: {type: string}
+        external_messages_sent: {type: boolean}
+        payload:
+          type: object
+          properties:
+            total: {type: integer}
+            truncated: {type: boolean}
+            demo_mode: {type: boolean}
+            metrics:
+              type: object
+              additionalProperties: {type: number}
+            members:
+              type: array
+              items:
+                type: object
+                required: [id, name, branch_id, end_date, days_remaining]
+                properties:
+                  id: {type: integer}
+                  name: {type: string}
+                  branch_id: {type: integer}
+                  end_date: {type: string}
+                  days_remaining: {type: integer}
     HealthStatus:
       type: object
       required: [status]

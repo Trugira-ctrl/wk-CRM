@@ -22,6 +22,7 @@ from .services import create_member, get_member, run_action
 from .requests import JoinRequest, validated
 from .reporting import payment_page
 from .wallet import wallet_view, run_wallet_action
+from .automation import service_auth, snapshot as automation_snapshot, record_report, reports as automation_reports
 
 app = FastAPI(title="WAKA Phase 1 simulated operations API", version="1.0.0")
 # Queue before entering FastAPI's synchronous worker pool. Otherwise session
@@ -63,6 +64,10 @@ def set_cookie(response: Response, token: str):
 
 @app.middleware("http")
 async def validate_mutation_origin(request: Request, call_next):
+    # Internal automation uses a dedicated bearer credential, never cookie auth.
+    # These paths are not routed by the public proxy.
+    if request.url.path.startswith("/internal/automation/"):
+        return await call_next(request)
     if request.method not in {"GET", "HEAD", "OPTIONS"}:
         origin = request.headers.get("origin")
         if ENVIRONMENT == "production":
@@ -228,6 +233,35 @@ def wallet_actions(body: dict, user: User = Depends(current_user), db: Session =
     except Exception:
         db.rollback()
         raise
+
+
+def automation_service(request: Request):
+    service_auth(request.headers.get("authorization"))
+
+
+@app.get("/internal/automation/snapshot", dependencies=[Depends(automation_service)])
+def get_automation_snapshot(db: Session = Depends(get_db)):
+    try:
+        return automation_snapshot(db)
+    finally:
+        db.rollback()
+
+
+@app.post("/internal/automation/results", dependencies=[Depends(automation_service)])
+def put_automation_report(body: dict, db: Session = Depends(get_db)):
+    try:
+        return record_report(db, body)
+    except Exception:
+        db.rollback()
+        raise
+
+
+@app.get("/api/automation")
+def get_automation_reports(user: User = Depends(current_user), db: Session = Depends(get_db)):
+    try:
+        return automation_reports(db, user)
+    finally:
+        db.rollback()
 
 
 @app.get("/api/sample-export.csv", response_class=PlainTextResponse)
