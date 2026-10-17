@@ -13,8 +13,12 @@ def request(name, path, position, body=None, health=False):
     if not health:
         params.update(authentication="genericCredentialType", genericAuthType="httpHeaderAuth")
     if body:
-        # Parenthesize object literals for n8n's expression compiler.
-        expression = "={{ (" + body[3:-2].strip() + ") }}"
+        # n8n treats adjacent closing braces as the template terminator,
+        # including inside nested object literals. Separate the JS braces.
+        code = body[3:-2].strip()
+        while "}}" in code:
+            code = code.replace("}}", "} }")
+        expression = "={{ (" + code + ") }}"
         params.update(method="POST", sendBody=True, specifyBody="json", jsonBody=expression)
     node = {"id": name.lower().replace(" ", "-"), "name": name, "type": "n8n-nodes-base.httpRequest",
             "typeVersion": 4.2, "position": position, "parameters": params,

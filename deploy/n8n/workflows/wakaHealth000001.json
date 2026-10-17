@@ -83,7 +83,7 @@
         "method": "POST",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ ({workflow:'health-check', day:$now.setZone('Africa/Kigali').toISODate(), status:$json.status === 'ok' ? 'HEALTHY' : 'UNHEALTHY', summary:$json.status === 'ok' ? 'WAKA API and database are reachable' : 'WAKA health check failed; inspect the n8n execution', payload:{checked_at:$now.toISO(), api_status:$json.status || 'error'}}) }}"
+        "jsonBody": "={{ ({workflow:'health-check', day:$now.setZone('Africa/Kigali').toISODate(), status:$json.status === 'ok' ? 'HEALTHY' : 'UNHEALTHY', summary:$json.status === 'ok' ? 'WAKA API and database are reachable' : 'WAKA health check failed; inspect the n8n execution', payload:{checked_at:$now.toISO(), api_status:$json.status || 'error'} }) }}"
       },
       "retryOnFail": true,
       "maxTries": 3,

@@ -90,7 +90,7 @@
         "method": "POST",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ ({workflow:'membership-expiry', day:$json.day, status:'DRAFT', summary:$json.metrics.expiring_members + ' membership(s) expire within seven days. Staff reminder review; no messages sent.', payload:{members:$json.expiring_members, total:$json.metrics.expiring_members, truncated:$json.expiring_list_truncated}}) }}"
+        "jsonBody": "={{ ({workflow:'membership-expiry', day:$json.day, status:'DRAFT', summary:$json.metrics.expiring_members + ' membership(s) expire within seven days. Staff reminder review; no messages sent.', payload:{members:$json.expiring_members, total:$json.metrics.expiring_members, truncated:$json.expiring_list_truncated} }) }}"
       },
       "retryOnFail": true,
       "maxTries": 3,
