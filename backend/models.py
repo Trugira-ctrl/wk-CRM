@@ -160,6 +160,23 @@ class WalletEntry(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
+class MomoSandboxPayment(Base):
+    __tablename__ = "waka_momo_sandbox_payments"
+    __table_args__ = (CheckConstraint("amount_minor >= 100 AND amount_minor <= 100000 AND credited_minor IN (0, amount_minor)", name="ck_momo_sandbox_amount"),)
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    actor_id: Mapped[int] = mapped_column(ForeignKey("waka_users.id"))
+    idempotency_key: Mapped[str] = mapped_column(String(100), unique=True)
+    scenario: Mapped[str] = mapped_column(String(20))
+    amount_minor: Mapped[int] = mapped_column(Integer)
+    credited_minor: Mapped[int] = mapped_column(Integer, default=0)
+    status: Mapped[str] = mapped_column(String(30))
+    provider_transaction_id: Mapped[str | None] = mapped_column(String(160), unique=True)
+    provider_response: Mapped[str] = mapped_column(Text, default="{}")
+    note: Mapped[str] = mapped_column(String(500), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
 class AccessEvent(Base):
     __tablename__ = "waka_access_events"
     __table_args__ = (Index("ix_waka_access_branch_time", "branch_id", "occurred_at"),)

@@ -23,6 +23,7 @@ from .requests import JoinRequest, validated
 from .reporting import payment_page
 from .wallet import wallet_view, run_wallet_action
 from .automation import service_auth, snapshot as automation_snapshot, record_report, reports as automation_reports
+from . import momo_sandbox
 
 app = FastAPI(title="WAKA Phase 1 simulated operations API", version="1.0.0")
 # Queue before entering FastAPI's synchronous worker pool. Otherwise session
@@ -233,6 +234,38 @@ def wallet_actions(body: dict, user: User = Depends(current_user), db: Session =
     except Exception:
         db.rollback()
         raise
+
+
+@app.get("/api/momo-sandbox")
+def momo_overview(user: User = Depends(current_user), db: Session = Depends(get_db)):
+    try:
+        return momo_sandbox.overview(db, user)
+    finally:
+        db.rollback()
+
+
+@app.post("/api/momo-sandbox/payments")
+def momo_start(body: dict, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    try:
+        return momo_sandbox.start(db, user, body)
+    finally:
+        db.rollback()
+
+
+@app.post("/api/momo-sandbox/payments/{reference}/check")
+def momo_check(reference: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    try:
+        return momo_sandbox.check(db, user, reference)
+    finally:
+        db.rollback()
+
+
+@app.get("/api/momo-sandbox/payments/{reference}/receipt")
+def momo_receipt(reference: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    try:
+        return momo_sandbox.receipt(db, user, reference)
+    finally:
+        db.rollback()
 
 
 def automation_service(request: Request):

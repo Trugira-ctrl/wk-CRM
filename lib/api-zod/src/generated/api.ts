@@ -8,6 +8,82 @@
 import * as zod from 'zod';
 
 
+export const GetMomoSandboxResponse = zod.object({
+  "configured": zod.boolean(),
+  "currency": zod.string(),
+  "sandbox": zod.boolean(),
+  "balance_minor": zod.number().int(),
+  "payments": zod.array(zod.object({
+  "id": zod.string(),
+  "amount_minor": zod.number().int(),
+  "currency": zod.string(),
+  "scenario": zod.enum(['SUCCESSFUL', 'FAILED', 'PENDING']),
+  "status": zod.string(),
+  "credited_minor": zod.number().int(),
+  "provider_transaction_id": zod.string().nullable(),
+  "note": zod.string(),
+  "created_at": zod.string(),
+  "verified_at": zod.string().nullable(),
+  "sandbox": zod.boolean(),
+  "real_money": zod.boolean()
+}))
+})
+
+
+export const startMomoSandboxPaymentBodyAmountMinorMin = 100;
+export const startMomoSandboxPaymentBodyAmountMinorMax = 100000;
+
+
+
+export const StartMomoSandboxPaymentBody = zod.object({
+  "idempotency_key": zod.string(),
+  "amount_minor": zod.number().int().min(startMomoSandboxPaymentBodyAmountMinorMin).max(startMomoSandboxPaymentBodyAmountMinorMax),
+  "scenario": zod.enum(['SUCCESSFUL', 'FAILED', 'PENDING'])
+})
+
+export const StartMomoSandboxPaymentResponse = zod.object({
+  "id": zod.string(),
+  "amount_minor": zod.number().int(),
+  "currency": zod.string(),
+  "scenario": zod.enum(['SUCCESSFUL', 'FAILED', 'PENDING']),
+  "status": zod.string(),
+  "credited_minor": zod.number().int(),
+  "provider_transaction_id": zod.string().nullable(),
+  "note": zod.string(),
+  "created_at": zod.string(),
+  "verified_at": zod.string().nullable(),
+  "sandbox": zod.boolean(),
+  "real_money": zod.boolean()
+})
+
+
+export const CheckMomoSandboxPaymentParams = zod.object({
+  "reference": zod.coerce.string()
+})
+
+export const CheckMomoSandboxPaymentResponse = zod.object({
+  "id": zod.string(),
+  "amount_minor": zod.number().int(),
+  "currency": zod.string(),
+  "scenario": zod.enum(['SUCCESSFUL', 'FAILED', 'PENDING']),
+  "status": zod.string(),
+  "credited_minor": zod.number().int(),
+  "provider_transaction_id": zod.string().nullable(),
+  "note": zod.string(),
+  "created_at": zod.string(),
+  "verified_at": zod.string().nullable(),
+  "sandbox": zod.boolean(),
+  "real_money": zod.boolean()
+})
+
+
+export const GetMomoSandboxReceiptParams = zod.object({
+  "reference": zod.coerce.string()
+})
+
+export const GetMomoSandboxReceiptResponse = zod.record(zod.string(), zod.unknown())
+
+
 export const GetAutomationResponse = zod.object({
   "timezone": zod.string(),
   "external_messages_enabled": zod.boolean(),

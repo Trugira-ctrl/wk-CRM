@@ -160,6 +160,10 @@ See [the n8n setup](deploy/n8n/README.md) for the private editor, three managed
 starter workflows and the staff **Automations** page. These workflows prepare
 internal reports; they send no external notifications.
 
+The admin **MoMo Sandbox** page provides an isolated test-EUR wallet and structured
+MTN test receipts. [Setup and limits](deploy/MOMO_SANDBOX.md). Real-money payments
+remain unavailable; sandbox credentials and successful MTN provisioning are required.
+
 ## Gym credit wallet
 
 Members can add simulated prepaid credit, pay for membership with it and request reviewed refunds. Completed voluntary refunds pause new top-ups for two calendar months; direct membership purchases remain available. See [the wallet guide](docs/gym-credit.md) for the walkthrough, safeguards and remaining MTN integration work. No real money is accepted or refunded.

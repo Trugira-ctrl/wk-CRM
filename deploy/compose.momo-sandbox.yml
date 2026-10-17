@@ -1,0 +1,8 @@
+# Opt-in test integration; production URLs/payers are unavailable in this adapter.
+services:
+  backend:
+    environment:
+      MOMO_SANDBOX_ENABLED: ${MOMO_SANDBOX_ENABLED:-false}
+      MOMO_SANDBOX_SUBSCRIPTION_KEY: ${MOMO_SANDBOX_SUBSCRIPTION_KEY:-}
+      MOMO_SANDBOX_API_USER: ${MOMO_SANDBOX_API_USER:-}
+      MOMO_SANDBOX_API_KEY: ${MOMO_SANDBOX_API_KEY:-}

@@ -33,7 +33,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         router.push("/portal");
       } else if (!isStaff && !pathname.startsWith("/portal")) {
         router.push("/portal");
-      } else if (role !== "ADMIN" && (pathname.startsWith("/migration") || pathname.startsWith("/settings"))) {
+      } else if (role !== "ADMIN" && (pathname.startsWith("/migration") || pathname.startsWith("/settings") || pathname.startsWith("/momo-sandbox"))) {
         router.push("/dashboard");
       }
     }
@@ -52,7 +52,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const staffRole = role === "ADMIN" || role === "MANAGEMENT" || role === "RECEPTION";
   const forbidden =
     ((role === "MEMBER" || !staffRole) && !pathname.startsWith("/portal")) ||
-    (role !== "ADMIN" && (pathname.startsWith("/migration") || pathname.startsWith("/settings")));
+    (role !== "ADMIN" && (pathname.startsWith("/migration") || pathname.startsWith("/settings") || pathname.startsWith("/momo-sandbox")));
   if (forbidden) {
     return <div className="min-h-screen flex items-center justify-center text-sm text-zinc-500 uppercase tracking-widest">Redirecting...</div>;
   }
@@ -72,6 +72,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   ];
 
   const adminNav = [
+    { name: "MoMo Sandbox", href: "/momo-sandbox", icon: CreditCard },
     { name: "Migration", href: "/migration", icon: HardDrive },
     { name: "Settings", href: "/settings", icon: Settings },
   ];

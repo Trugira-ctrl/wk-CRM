@@ -5,6 +5,51 @@
  * WAKA Phase 1 simulated operations API
  * OpenAPI spec version: 1.0.0
  */
+export type MomoSandboxInputScenario = typeof MomoSandboxInputScenario[keyof typeof MomoSandboxInputScenario];
+
+
+export const MomoSandboxInputScenario = {
+  SUCCESSFUL: 'SUCCESSFUL',
+  FAILED: 'FAILED',
+  PENDING: 'PENDING',
+} as const;
+
+export interface MomoSandboxInput {
+  idempotency_key: string;
+  /**
+     * @minimum 100
+     * @maximum 100000
+     */
+  amount_minor: number;
+  scenario: MomoSandboxInputScenario;
+}
+
+export type MomoSandboxPaymentScenario = typeof MomoSandboxPaymentScenario[keyof typeof MomoSandboxPaymentScenario];
+
+
+export const MomoSandboxPaymentScenario = {
+  SUCCESSFUL: 'SUCCESSFUL',
+  FAILED: 'FAILED',
+  PENDING: 'PENDING',
+} as const;
+
+export interface MomoSandboxPayment {
+  id: string;
+  amount_minor: number;
+  currency: string;
+  scenario: MomoSandboxPaymentScenario;
+  status: string;
+  credited_minor: number;
+  /** @nullable */
+  provider_transaction_id: string | null;
+  note: string;
+  created_at: string;
+  /** @nullable */
+  verified_at: string | null;
+  sandbox: boolean;
+  real_money: boolean;
+}
+
 export type AutomationReportWorkflow = typeof AutomationReportWorkflow[keyof typeof AutomationReportWorkflow];
 
 
@@ -509,6 +554,16 @@ export interface ActionResult {
   results?: ActionResultResultsItem[];
   run_id?: string;
 }
+
+export type GetMomoSandbox200 = {
+  configured: boolean;
+  currency: string;
+  sandbox: boolean;
+  balance_minor: number;
+  payments: MomoSandboxPayment[];
+};
+
+export type GetMomoSandboxReceipt200 = { [key: string]: unknown };
 
 export type GetAutomation200 = {
   timezone: string;

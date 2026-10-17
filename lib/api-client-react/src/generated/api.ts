@@ -23,12 +23,16 @@ import type {
   ActionInput,
   ActionResult,
   GetAutomation200,
+  GetMomoSandbox200,
+  GetMomoSandboxReceipt200,
   GetPayments200,
   GetPaymentsParams,
   GetWalletParams,
   HealthStatus,
   LoginInput,
   MemberInput,
+  MomoSandboxInput,
+  MomoSandboxPayment,
   PublicData,
   RunWalletAction200,
   Session,
@@ -63,6 +67,298 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getGetMomoSandboxUrl = () => {
+
+
+
+
+  return `/api/momo-sandbox`
+}
+
+export const getMomoSandbox = async ( options?: Parameters<typeof customFetch>[1]): Promise<GetMomoSandbox200> => {
+
+  return customFetch<GetMomoSandbox200>(getGetMomoSandboxUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMomoSandboxQueryKey = () => {
+    return [
+    `/api/momo-sandbox`
+    ] as const;
+    }
+
+
+export const getGetMomoSandboxQueryOptions = <TData = Awaited<ReturnType<typeof getMomoSandbox>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMomoSandbox>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMomoSandboxQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMomoSandbox>>> = ({ signal }) => getMomoSandbox({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMomoSandbox>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMomoSandboxQueryResult = NonNullable<Awaited<ReturnType<typeof getMomoSandbox>>>
+export type GetMomoSandboxQueryError = ErrorType<unknown>
+
+
+
+export function useGetMomoSandbox<TData = Awaited<ReturnType<typeof getMomoSandbox>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMomoSandbox>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMomoSandboxQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getStartMomoSandboxPaymentUrl = () => {
+
+
+
+
+  return `/api/momo-sandbox/payments`
+}
+
+export const startMomoSandboxPayment = async (momoSandboxInput: MomoSandboxInput, options?: Parameters<typeof customFetch>[1]): Promise<MomoSandboxPayment> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<MomoSandboxPayment>(getStartMomoSandboxPaymentUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(momoSandboxInput)
+  }
+);}
+
+
+
+
+
+export const getStartMomoSandboxPaymentMutationKey = () => ['startMomoSandboxPayment'] as const;
+
+export const getStartMomoSandboxPaymentMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startMomoSandboxPayment>>, TError,StartMomoSandboxPaymentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof startMomoSandboxPayment>>, TError,StartMomoSandboxPaymentMutationVariables, TContext> => {
+
+const mutationKey = getStartMomoSandboxPaymentMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof startMomoSandboxPayment>>, StartMomoSandboxPaymentMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  startMomoSandboxPayment(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type StartMomoSandboxPaymentMutationResult = NonNullable<Awaited<ReturnType<typeof startMomoSandboxPayment>>>
+    export type StartMomoSandboxPaymentMutationBody = BodyType<MomoSandboxInput>
+    export type StartMomoSandboxPaymentMutationError = ErrorType<unknown>
+    export type StartMomoSandboxPaymentMutationVariables = {data: BodyType<MomoSandboxInput>}
+
+    export const useStartMomoSandboxPayment = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startMomoSandboxPayment>>, TError,StartMomoSandboxPaymentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof startMomoSandboxPayment>>,
+        TError,
+        StartMomoSandboxPaymentMutationVariables,
+        TContext
+      > => {
+      return useMutation(getStartMomoSandboxPaymentMutationOptions(options));
+    }
+
+export const getCheckMomoSandboxPaymentUrl = (reference: string,) => {
+
+
+
+
+  return `/api/momo-sandbox/payments/${reference}/check`
+}
+
+export const checkMomoSandboxPayment = async (reference: string, options?: Parameters<typeof customFetch>[1]): Promise<MomoSandboxPayment> => {
+
+  return customFetch<MomoSandboxPayment>(getCheckMomoSandboxPaymentUrl(reference),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getCheckMomoSandboxPaymentMutationKey = () => ['checkMomoSandboxPayment'] as const;
+
+export const getCheckMomoSandboxPaymentMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof checkMomoSandboxPayment>>, TError,CheckMomoSandboxPaymentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof checkMomoSandboxPayment>>, TError,CheckMomoSandboxPaymentMutationVariables, TContext> => {
+
+const mutationKey = getCheckMomoSandboxPaymentMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof checkMomoSandboxPayment>>, CheckMomoSandboxPaymentMutationVariables> = (props) => {
+          const {reference} = props ?? {};
+
+          return  checkMomoSandboxPayment(reference,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CheckMomoSandboxPaymentMutationResult = NonNullable<Awaited<ReturnType<typeof checkMomoSandboxPayment>>>
+
+    export type CheckMomoSandboxPaymentMutationError = ErrorType<unknown>
+    export type CheckMomoSandboxPaymentMutationVariables = {reference: string}
+
+    export const useCheckMomoSandboxPayment = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof checkMomoSandboxPayment>>, TError,CheckMomoSandboxPaymentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof checkMomoSandboxPayment>>,
+        TError,
+        CheckMomoSandboxPaymentMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCheckMomoSandboxPaymentMutationOptions(options));
+    }
+
+export const getGetMomoSandboxReceiptUrl = (reference: string,) => {
+
+
+
+
+  return `/api/momo-sandbox/payments/${reference}/receipt`
+}
+
+export const getMomoSandboxReceipt = async (reference: string, options?: Parameters<typeof customFetch>[1]): Promise<GetMomoSandboxReceipt200> => {
+
+  return customFetch<GetMomoSandboxReceipt200>(getGetMomoSandboxReceiptUrl(reference),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMomoSandboxReceiptQueryKey = (reference: string,) => {
+    return [
+    `/api/momo-sandbox/payments/${reference}/receipt`
+    ] as const;
+    }
+
+
+export const getGetMomoSandboxReceiptQueryOptions = <TData = Awaited<ReturnType<typeof getMomoSandboxReceipt>>, TError = ErrorType<unknown>>(reference: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMomoSandboxReceipt>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMomoSandboxReceiptQueryKey(reference);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMomoSandboxReceipt>>> = ({ signal }) => getMomoSandboxReceipt(reference, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: reference !== null && reference !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMomoSandboxReceipt>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMomoSandboxReceiptQueryResult = NonNullable<Awaited<ReturnType<typeof getMomoSandboxReceipt>>>
+export type GetMomoSandboxReceiptQueryError = ErrorType<unknown>
+
+
+
+export function useGetMomoSandboxReceipt<TData = Awaited<ReturnType<typeof getMomoSandboxReceipt>>, TError = ErrorType<unknown>>(
+ reference: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMomoSandboxReceipt>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMomoSandboxReceiptQueryOptions(reference,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getGetAutomationUrl = () => {
 

@@ -6,6 +6,67 @@ info:
 servers:
   - url: /api
 paths:
+  /momo-sandbox:
+    get:
+      operationId: getMomoSandbox
+      responses:
+        "200":
+          description: Administrator-only isolated EUR test wallet
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [configured, currency, sandbox, balance_minor, payments]
+                properties:
+                  configured: {type: boolean}
+                  currency: {type: string}
+                  sandbox: {type: boolean}
+                  balance_minor: {type: integer}
+                  payments:
+                    type: array
+                    items: {$ref: "#/components/schemas/MomoSandboxPayment"}
+  /momo-sandbox/payments:
+    post:
+      operationId: startMomoSandboxPayment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/MomoSandboxInput"}
+      responses:
+        "200":
+          description: Pending or existing sandbox request, never an immediate credit
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/MomoSandboxPayment"}
+  /momo-sandbox/payments/{reference}/check:
+    post:
+      operationId: checkMomoSandboxPayment
+      parameters:
+        - in: path
+          name: reference
+          required: true
+          schema: {type: string}
+      responses:
+        "200":
+          description: Result checked directly with MTN
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/MomoSandboxPayment"}
+  /momo-sandbox/payments/{reference}/receipt:
+    get:
+      operationId: getMomoSandboxReceipt
+      parameters:
+        - in: path
+          name: reference
+          required: true
+          schema: {type: string}
+      responses:
+        "200":
+          description: Sandbox-only structured payment evidence, not proof of real funds
+          content:
+            application/json:
+              schema: {type: object, additionalProperties: true}
   /automation:
     get:
       operationId: getAutomation
@@ -171,6 +232,29 @@ paths:
                   total: {type: integer}
 components:
   schemas:
+    MomoSandboxInput:
+      type: object
+      required: [idempotency_key, amount_minor, scenario]
+      properties:
+        idempotency_key: {type: string}
+        amount_minor: {type: integer, minimum: 100, maximum: 100000}
+        scenario: {type: string, enum: [SUCCESSFUL, FAILED, PENDING]}
+    MomoSandboxPayment:
+      type: object
+      required: [id, amount_minor, currency, scenario, status, credited_minor, provider_transaction_id, note, created_at, verified_at, sandbox, real_money]
+      properties:
+        id: {type: string}
+        amount_minor: {type: integer}
+        currency: {type: string}
+        scenario: {type: string, enum: [SUCCESSFUL, FAILED, PENDING]}
+        status: {type: string}
+        credited_minor: {type: integer}
+        provider_transaction_id: {type: [string, "null"]}
+        note: {type: string}
+        created_at: {type: string}
+        verified_at: {type: [string, "null"]}
+        sandbox: {type: boolean}
+        real_money: {type: boolean}
     AutomationReport:
       type: object
       required: [workflow, day, status, summary, payload, recorded_at, external_messages_sent]
