@@ -90,7 +90,7 @@
         "method": "POST",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ {workflow:'daily-summary', day:$json.day, status:'READY', summary:'Daily WAKA operations summary at 18:00 Kigali time', payload:{metrics:$json.metrics, generated_at:$json.generated_at, demo_mode:$json.demo_mode}} }}"
+        "jsonBody": "={{ ({workflow:'daily-summary', day:$json.day, status:'READY', summary:'Daily WAKA operations summary at 18:00 Kigali time', payload:{metrics:$json.metrics, generated_at:$json.generated_at, demo_mode:$json.demo_mode}}) }}"
       },
       "retryOnFail": true,
       "maxTries": 3,

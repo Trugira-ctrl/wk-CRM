@@ -29,7 +29,8 @@ Only **Branch 1 — Gated Branch** has a simulated speedgate.
 - Authentication: simple portable database-backed sessions, HTTP-only cookies,
   salted password hashing and server-enforced role permissions.
 - API contract: OpenAPI with generated TypeScript hooks.
-- Future automation: n8n consumes events; never makes core access decisions.
+- Optional automation: private n8n schedules health, expiry-review and daily
+  operations reports; FastAPI retains core access and payment decisions.
 
 ```text
 artifacts/waka/           Next.js frontend (the /frontend equivalent)
@@ -154,6 +155,10 @@ against newly seeded records. Do not mix this dataset with real member data.
 ## Live AWS POC updates
 
 See [deploy/AWS_POC.md](deploy/AWS_POC.md) for the live demonstration, server pull hook, persistent database backups and update commands.
+
+See [the n8n setup](deploy/n8n/README.md) for the private editor, three managed
+starter workflows and the staff **Automations** page. These workflows prepare
+internal reports; they send no external notifications.
 
 ## Gym credit wallet
 

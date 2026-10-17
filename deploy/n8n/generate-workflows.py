@@ -13,7 +13,9 @@ def request(name, path, position, body=None, health=False):
     if not health:
         params.update(authentication="genericCredentialType", genericAuthType="httpHeaderAuth")
     if body:
-        params.update(method="POST", sendBody=True, specifyBody="json", jsonBody=body)
+        # Parenthesize object literals for n8n's expression compiler.
+        expression = "={{ (" + body[3:-2].strip() + ") }}"
+        params.update(method="POST", sendBody=True, specifyBody="json", jsonBody=expression)
     node = {"id": name.lower().replace(" ", "-"), "name": name, "type": "n8n-nodes-base.httpRequest",
             "typeVersion": 4.2, "position": position, "parameters": params,
             "retryOnFail": True, "maxTries": 3, "waitBetweenTries": 2000}
